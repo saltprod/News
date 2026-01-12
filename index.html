@@ -197,14 +197,42 @@ function applyTelegramTheme(themeParams){
 }
 
 /* ========== Debug helpers ========== */
-function showDebug(msg, isError = false){
+function showDebug(msg, isError = false, details){
     const el = $('debugBanner');
     if(!el) return;
     el.style.display = 'block';
     el.style.color = isError ? '#c92a2a' : 'var(--muted)';
-    el.textContent = String(msg);
+    // set main text
+    try{ el.textContent = (typeof msg === 'string') ? msg : JSON.stringify(msg); }catch(e){ el.textContent = String(msg); }
+
+    // attach optional details (stack or object)
+    const prev = el.querySelector('pre'); if(prev) prev.remove();
+    if(details){
+        const pre = document.createElement('pre');
+        pre.style.whiteSpace = 'pre-wrap'; pre.style.marginTop = '6px'; pre.style.color = 'inherit';
+        pre.textContent = (typeof details === 'string') ? details : JSON.stringify(details, null, 2);
+        el.appendChild(pre);
+    }
+
+    // console log for easier remote debugging
+    try{ console[isError ? 'error' : 'log']('[MiniApp Debug]', msg, details || ''); }catch(e){}
 }
 function hideDebug(){ const el = $('debugBanner'); if(el) el.style.display='none'; }
+
+// Global error handlers to capture unexpected failures inside Telegram WebView
+window.addEventListener('error', function(e){
+    const msg = e && (e.message || e.type) ? (e.message || e.type) : 'Script error';
+    const stack = e && e.error && e.error.stack ? e.error.stack : (e.filename ? `${e.filename}:${e.lineno}:${e.colno}` : 'no-stack');
+    showDebug(msg, true, stack);
+    console.error('[MiniApp window.onerror]', e);
+});
+
+window.addEventListener('unhandledrejection', function(ev){
+    const reason = ev && ev.reason ? ev.reason : 'unknown';
+    const details = reason && reason.stack ? reason.stack : (typeof reason === 'object' ? JSON.stringify(reason) : String(reason));
+    showDebug('Unhandled promise rejection', true, details);
+    console.error('[MiniApp unhandledrejection]', ev);
+});
 
 /* ========== Загрузка новостей (mock или fetch) ========== */
 async function loadNews(){

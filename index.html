@@ -12,8 +12,10 @@
     html,body{height:100%;margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,'Helvetica Neue',Arial}
     body{background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased}
     canvas#bgCanvas{position:fixed;left:0;top:0;right:0;bottom:0;z-index:0;pointer-events:none}
-    .app{position:relative;z-index:2;max-width:960px;margin:0 auto}
-    header{position:sticky;top:0;z-index:3;background:linear-gradient(180deg, rgba(6,10,20,0.28), transparent);padding:14px}
+  .app{position:relative;z-index:2;max-width:960px;margin:0 auto;padding-top:120px;padding-bottom:80px}
+  /* make header fixed so it stays visible in Telegram WebView */
+  header{position:fixed;top:0;left:0;right:0;z-index:60;background:linear-gradient(180deg, rgba(6,10,20,0.98), rgba(6,10,20,0.9));padding:14px}
+  main{height:calc(100vh - 120px - 80px);overflow:auto}
     .title-row{display:flex;align-items:center;justify-content:space-between}
     h1{font-size:18px;margin:0}
     .user{color:var(--muted);font-size:13px;margin-top:6px}
@@ -23,10 +25,11 @@
     .card h4{margin:0 0 6px 0}
     .card p{margin:0;color:var(--muted);font-size:13px}
     .meta{display:flex;justify-content:space-between;margin-top:8px;font-size:12px;color:var(--muted)}
-    .bottom-bar{position:fixed;left:50%;transform:translateX(-50%);bottom:18px;background:rgba(6,10,20,0.6);padding:8px;border-radius:999px;display:flex;gap:8px;z-index:4}
+  /* fixed bottom bar */
+  .bottom-bar{position:fixed;left:0;right:0;bottom:0;background:var(--surface);padding:10px 12px;display:flex;justify-content:center;z-index:50;border-top:1px solid rgba(255,255,255,0.03)}
     .btn{background:rgba(var(--accent-rgb),var(--btn-alpha));border:0;padding:8px 12px;border-radius:8px;color:var(--text);cursor:pointer}
     .btn.ghost{background:transparent;border:1px solid rgba(255,255,255,0.04)}
-    .fab-translate{position:fixed;right:18px;bottom:96px;background:rgba(var(--accent-rgb),0.98);color:white;border-radius:999px;padding:12px 14px;z-index:5;box-shadow:0 6px 18px rgba(0,0,0,0.4);cursor:pointer}
+  /* removed global translate FAB */
     .modal-backdrop{position:fixed;left:0;top:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.45);z-index:6}
     .modal{background:var(--surface);padding:14px;border-radius:12px;max-width:820px;width:94%;box-shadow:0 8px 30px rgba(0,0,0,0.6);color:var(--text);position:relative}
     .modal .close{position:absolute;right:18px;top:18px;background:transparent;border:0;color:var(--muted);cursor:pointer}
@@ -37,6 +40,8 @@
     .toggle.on .dot{transform:translateX(16px)}
     .badge{background:rgba(255,255,255,0.04);padding:4px 8px;border-radius:999px;font-size:12px;color:var(--muted)}
     .skeleton{height:14px;background:linear-gradient(90deg, rgba(255,255,255,0.02), rgba(255,255,255,0.04));border-radius:6px}
+    /* Source selector */
+    .source-select{background:var(--surface);color:var(--text);border:1px solid rgba(255,255,255,0.04);padding:8px 10px;border-radius:8px;font-size:14px}
     a{color:inherit}
   </style>
 </head>
@@ -53,6 +58,11 @@
           <button id="btnClose" class="btn ghost" title="Закрыть приложение">✖ Закрыть</button>
         </div>
       </div>
+      <!-- Source selector (populated by JS) -->
+      <div style="margin-top:10px;display:flex;gap:8px;align-items:center">
+        <select id="sourceSelect" class="source-select" aria-label="Выбор источника"></select>
+        <button id="btnReloadSource" class="btn ghost" title="Загрузить выбранный источник">Загрузить</button>
+      </div>
     </header>
     <main>
       <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
@@ -63,16 +73,8 @@
     </main>
 
     <div class="bottom-bar">
-      <button id="btnToggleTheme" class="btn ghost">Тема</button>
-      <label style="display:flex;gap:8px;align-items:center;color:var(--muted)">
-        <div>Фон</div>
-        <div id="bgToggle" class="toggle"><div class="dot"></div></div>
-      </label>
-      <div style="width:12px"></div>
-      <div class="badge" id="statusBadge">—</div>
+      <button id="btnLoadMore" class="btn">Загрузить ещё</button>
     </div>
-
-    <button id="fabTranslate" class="fab-translate">Перевести всё</button>
   </div>
 
   <template id="cardTpl">
@@ -82,7 +84,7 @@
       <div class="meta">
         <div class="source"></div>
         <div style="display:flex;gap:8px;align-items:center">
-          <div class="badge trBadge" style="display:none">TR</div>
+          <!-- translation badge removed -->
           <button class="btn btnFav">★</button>
         </div>
       </div>
@@ -95,33 +97,94 @@
     // Minimal Telegram.WebApp shim for local testing
     window.Telegram = window.Telegram || { WebApp: { initData: null, initDataUnsafe: {}, platform: 'web' }};
 
-    // LocalStorage keys
-    const LS_FAV = 'tg_minapp_fav_v1';
-    const LS_LAST = 'tg_minapp_last_v1';
-    const LS_BG = 'tg_minapp_bg_anim_v1';
-    const LS_THEME = 'tg_minapp_theme_override';
-    const LS_TR = 'tg_minapp_tr_v1';
+  // LocalStorage keys
+  const LS_FAV = 'tg_minapp_fav_v1';
+  const LS_LAST = 'tg_minapp_last_v1';
+  const LS_BG = 'tg_minapp_bg_anim_v1';
+  const LS_THEME = 'tg_minapp_theme_override';
 
     // Config: change to your feed. Supports 'rss:<URL>' or 'https://.../json'
     let fetchUrl = 'rss:https://rss.nytimes.com/services/xml/rss/nyt/World.xml';
 
-    // Small mock fallback
-    const BASE_NEWS = [{id:'m1',title:'Пример новости',summary:'Короткое описание',link:'#',source:'Пример'}];
+    // Selected source storage
+    const LS_SRC = 'tg_minapp_src_v1';
 
-    let news = [];
-    let isLoading = false;
-    let favs = new Set(JSON.parse(localStorage.getItem(LS_FAV)||'[]'));
-    let translateCache = JSON.parse(localStorage.getItem(LS_TR)||'{}');
-    let translateQueue = [];
-    let isProcessingQueue = false;
+    // Available sources (id, name, url). URLs are prefixed with 'rss:' when they are RSS feeds.
+    const SOURCES = [
+      {id:'bbc', name:'BBC News', url:'rss:https://feeds.bbci.co.uk/news/rss.xml'},
+      {id:'cnn', name:'CNN', url:'rss:http://rss.cnn.com/rss/edition.rss'},
+      {id:'guardian', name:'The Guardian', url:'rss:https://www.theguardian.com/world/rss'},
+      {id:'reuters', name:'Reuters', url:'rss:https://www.reuters.com/tools/rss'},
+      {id:'aljazeera', name:'Al Jazeera', url:'rss:https://www.aljazeera.com/xml/rss/all.xml'},
+      {id:'bloomberg', name:'Bloomberg', url:'rss:https://www.bloomberg.com/feed/podcast/etf.xml'},
+      {id:'techcrunch', name:'TechCrunch', url:'rss:https://techcrunch.com/feed/'},
+      {id:'verge', name:'The Verge', url:'rss:https://www.theverge.com/rss/index.xml'},
+      {id:'hn', name:'Hacker News', url:'rss:https://hnrss.org/frontpage'},
+      {id:'coindesk', name:'CoinDesk', url:'rss:https://www.coindesk.com/arc/outboundfeeds/rss/'},
+      {id:'cointelegraph', name:'CoinTelegraph', url:'rss:https://cointelegraph.com/rss'},
+      {id:'ft', name:'Financial Times', url:'rss:https://www.ft.com/?format=rss'},
+      {id:'nytimes', name:'The New York Times', url:'rss:https://rss.nytimes.com/services/xml/rss/nyt/World.xml'},
+      {id:'ap', name:'Associated Press', url:'rss:https://apnews.com/hub/ap-top-news?outputType=RSS'},
+      {id:'npr', name:'NPR', url:'rss:https://feeds.npr.org/1001/rss.xml'},
+      {id:'wired', name:'Wired', url:'rss:https://www.wired.com/feed/rss'},
+      {id:'arstechnica', name:'Ars Technica', url:'rss:http://feeds.arstechnica.com/arstechnica/index'},
+      {id:'engadget', name:'Engadget', url:'rss:https://www.engadget.com/rss.xml'},
+      {id:'euronews', name:'Euronews', url:'rss:https://www.euronews.com/rss?level=2&name=home'},
+      {id:'dw', name:'DW', url:'rss:https://rss.dw.com/rdf/rss-en-all'},
+      {id:'guardian-tech', name:'The Guardian - Tech', url:'rss:https://www.theguardian.com/uk/technology/rss'},
+      {id:'techmcr', name:'Techmeme', url:'rss:https://www.techmeme.com/feed.xml'},
+      {id:'eng', name:'Engage (examples)', url:'rss:https://feeds.feedburner.com/TechCrunch/'},
+      {id:'bbc-world', name:'BBC World', url:'rss:https://feeds.bbci.co.uk/news/world/rss.xml'}
+    ];
 
-    const $ = (sel,root=document)=>root.querySelector(sel);
-    const $$ = (sel,root=document)=>Array.from(root.querySelectorAll(sel));
+    // Populate the source selector and wire persistence
+    function loadSources(){
+      const sel = document.getElementById('sourceSelect'); if(!sel) return;
+      sel.innerHTML = '';
+      const placeholder = document.createElement('option'); placeholder.value = ''; placeholder.textContent = 'Выберите источник...'; sel.appendChild(placeholder);
+      SOURCES.forEach(s=>{ const o = document.createElement('option'); o.value = s.id; o.textContent = s.name; sel.appendChild(o); });
+      // restore selection
+      const saved = localStorage.getItem(LS_SRC);
+      if(saved){ sel.value = saved; const src = SOURCES.find(x=>x.id===saved); if(src){ fetchUrl = src.url; document.getElementById('inputFeed').value = fetchUrl; }}
+      sel.addEventListener('change', (e)=>{
+        const id = e.target.value; if(!id) return;
+        localStorage.setItem(LS_SRC, id);
+        const src = SOURCES.find(x=>x.id===id);
+        if(src){
+          // clear current list immediately for UX, then load new source
+          news = []; displayedCount = 0; renderNews();
+          fetchUrl = src.url; document.getElementById('inputFeed').value = fetchUrl; loadNews(src.url);
+        }
+      });
+      // reload button
+      const rb = document.getElementById('btnReloadSource'); if(rb){ rb.addEventListener('click', ()=>{ const id = sel.value; if(id){ loadNewsById(id); } else { loadNews(); } }); }
+    }
+
+    // Load news by source id (modular entrypoint)
+    function loadNewsById(sourceId){
+      const src = SOURCES.find(s=>s.id === sourceId);
+      if(!src){ setStatus('Источник не найден'); return; }
+      try{ localStorage.setItem(LS_SRC, sourceId); fetchUrl = src.url; document.getElementById('inputFeed').value = fetchUrl; news = []; displayedCount = 0; renderNews(); loadNews(src.url); }
+      catch(e){ console.error('loadNewsById', e); setStatus('Ошибка при загрузке источника'); }
+    }
+
+  // Small mock fallback
+  const BASE_NEWS = [{id:'m1',title:'Пример новости',summary:'Короткое описание',link:'#',source:'Пример'}];
+
+  let news = [];
+  let isLoading = false;
+  let favs = new Set(JSON.parse(localStorage.getItem(LS_FAV)||'[]'));
+  // pagination / UI state
+  const PAGE_SIZE = 10;
+  let displayedCount = 0; // how many items currently rendered
+
+  const $ = (sel,root=document)=>root.querySelector(sel);
+  const $$ = (sel,root=document)=>Array.from(root.querySelectorAll(sel));
 
     // Utilities
-    function saveFavs(){ localStorage.setItem(LS_FAV, JSON.stringify(Array.from(favs))); }
-    function saveTranslateCache(){ localStorage.setItem(LS_TR, JSON.stringify(translateCache)); }
-    function setStatus(text){ $('#statusBadge').textContent = text; }
+  function saveFavs(){ localStorage.setItem(LS_FAV, JSON.stringify(Array.from(favs))); }
+  // lightweight status: log + show debug banner if exists
+  function setStatus(text){ try{ const dbg = document.getElementById('debugBanner'); if(dbg){ dbg.style.display='block'; dbg.textContent = text; setTimeout(()=>{ dbg.style.display='none'; }, 2500); } }catch(e){} console.log('[status]', text); }
 
     // Fetch helpers
     async function fetchWithTimeout(url, opts={}, ms=12000){
@@ -187,6 +250,8 @@
           items = items.map((it,i)=>({ id: it.id || it.guid || 'j-' + i, title: it.title || it.name || 'Без названия', summary: it.summary || it.description || it.excerpt || '', link: it.url || it.link || '#', source: it.source || it.feed || 'JSON' }));
         }
         news = items.length ? items : BASE_NEWS;
+        // reset pagination
+        displayedCount = Math.min(PAGE_SIZE, news.length);
         localStorage.setItem(LS_LAST, JSON.stringify(news));
         setStatus('Готово');
       } catch(err){
@@ -194,10 +259,9 @@
         setStatus('Ошибка, используем кэш');
         const cached = JSON.parse(localStorage.getItem(LS_LAST) || 'null');
         news = cached && cached.length ? cached : BASE_NEWS;
+        displayedCount = Math.min(PAGE_SIZE, news.length);
       } finally{
         isLoading = false; renderNews();
-        // enqueue translations for items that don't have cache
-        news.forEach(it=>{ if(!translateCache[it.id]) enqueueTranslate(it.id, it.title + '\n\n' + (it.summary||'')); });
       }
     }
 
@@ -210,7 +274,10 @@
         }
         return;
       }
-      news.forEach(it=>{
+      // render only up to displayedCount for 'Load more' pagination
+      const list = news.slice(0, displayedCount);
+      const frag = document.createDocumentFragment();
+      list.forEach(it=>{
         const tpl = document.getElementById('cardTpl');
         const node = tpl.content.firstElementChild.cloneNode(true);
         node.querySelector('.ttl').textContent = it.title;
@@ -219,13 +286,13 @@
         const favBtn = node.querySelector('.btnFav');
         favBtn.textContent = favs.has(it.id) ? '★' : '☆';
         favBtn.addEventListener('click', (ev)=>{ ev.stopPropagation(); toggleFav(it.id); favBtn.textContent = favs.has(it.id) ? '★' : '☆'; });
-
-        const trBadge = node.querySelector('.trBadge');
-        if(translateCache[it.id]){ trBadge.style.display='inline-block'; }
-
         node.addEventListener('click', (ev)=>{ if(ev.ctrlKey||ev.metaKey){ window.open(it.link,'_blank'); } else openDetail(it); });
-        root.appendChild(node);
+        frag.appendChild(node);
       });
+      root.appendChild(frag);
+      // toggle Load more button
+      const moreBtn = document.getElementById('btnLoadMore');
+      if(moreBtn) moreBtn.disabled = displayedCount >= news.length;
     }
 
     // Modal
@@ -233,66 +300,20 @@
       const root = $('#modalRoot'); root.style.display = 'flex'; root.innerHTML = '';
       const back = document.createElement('div'); back.className='modal-backdrop';
       const modal = document.createElement('div'); modal.className='modal';
-      modal.innerHTML = `<button class="close">✖</button><h3>${escapeHtml(it.title)}</h3><div style="color:var(--muted);font-size:13px;margin-top:8px" id="modalSummary">${escapeHtml(it.summary||'')}</div><div style="margin-top:12px;display:flex;gap:8px"><a id="openLink" class="btn" target="_blank">Открыть</a><button id="doTranslate" class="btn ghost">Перевести</button><button id="toggleOrig" class="btn ghost">Оригинал</button></div>`;
-      back.appendChild(modal); root.appendChild(back);
-      back.addEventListener('click',(e)=>{ if(e.target===back) closeDetail(); });
-      modal.querySelector('.close').addEventListener('click',closeDetail);
-      const openLink = modal.querySelector('#openLink'); openLink.href = it.link; openLink.textContent = 'Открыть источник';
-
-      const doTranslate = modal.querySelector('#doTranslate');
-      const toggleOrig = modal.querySelector('#toggleOrig');
-      const showTranslated = ()=>{ const t = translateCache[it.id]; if(t){ modal.querySelector('#modalSummary').textContent = t; } };
-      if(translateCache[it.id]) showTranslated();
-      doTranslate.addEventListener('click', async ()=>{
-        setStatus('Перевод...');
-        const t = await translateTextQueued(it.id, it.title + '\n\n' + (it.summary||''));
-        if(t) { translateCache[it.id]=t; saveTranslateCache(); showTranslated(); updateCardTranslation(it.id,true); setStatus('Переведено'); }
-        else { setStatus('Не удалось перевести'); window.open(googleTranslateUrl(it.title + '\n\n' + (it.summary||''))); }
-      });
-      toggleOrig.addEventListener('click', ()=>{ modal.querySelector('#modalSummary').textContent = it.summary||''; });
+  modal.innerHTML = `<button class="close">✖</button><h3>${escapeHtml(it.title)}</h3><div style="color:var(--muted);font-size:13px;margin-top:8px" id="modalSummary">${escapeHtml(it.summary||'')}</div><div style="margin-top:12px;display:flex;gap:8px"><a id="openLink" class="btn" target="_blank">Открыть</a></div>`;
+    back.appendChild(modal); root.appendChild(back);
+    back.addEventListener('click',(e)=>{ if(e.target===back) closeDetail(); });
+    modal.querySelector('.close').addEventListener('click',closeDetail);
+    const openLink = modal.querySelector('#openLink'); openLink.href = it.link; openLink.textContent = 'Открыть источник';
     }
     function closeDetail(){ const root = $('#modalRoot'); root.style.display='none'; root.innerHTML=''; }
 
-    function updateCardTranslation(id, translated){ // marks badges in list
-      $$('#news .card').forEach(card=>{
-        const ttl = card.querySelector('.ttl').textContent;
-        // we don't keep id on card nodes; match by title as fallback
-        if(translateCache[id] && (ttl && news.find(n=>n.title===ttl && n.id===id))){ const b = card.querySelector('.trBadge'); if(b) b.style.display='inline-block'; }
-      });
-    }
+    // removed translation badge updater (translations disabled)
 
     // Fav
     function toggleFav(id){ if(favs.has(id)) { favs.delete(id); } else { favs.add(id); } saveFavs(); }
 
-    // Translation: Queue + cache + worker
-    function enqueueTranslate(id, text){ if(translateCache[id]) return; translateQueue.push({id,text}); processTranslateQueue(); }
-
-    async function processTranslateQueue(){
-      if(isProcessingQueue) return; isProcessingQueue = true;
-      while(translateQueue.length){
-        const job = translateQueue.shift(); try{
-          setStatus('Перевод (фон): ' + (news.find(n=>n.id===job.id)?.title||job.id).slice(0,30));
-          const t = await translateTextLibre(job.text);
-          if(t){ translateCache[job.id]=t; saveTranslateCache(); updateCardTranslation(job.id,true); }
-        } catch(e){ console.warn('translate queue item failed', e); }
-        // small pause
-        await new Promise(r=>setTimeout(r, 600));
-      }
-      isProcessingQueue = false; setStatus('Готово');
-    }
-
-    async function translateTextQueued(id, text){ // immediate request via same API but returns result
-      try{ const res = await translateTextLibre(text); if(res){ translateCache[id]=res; saveTranslateCache(); return res; } } catch(e){ console.warn(e); } return null; }
-
-    async function translateTextLibre(text){
-      // Use libretranslate public endpoint (may be rate-limited). You can replace with your own service.
-      try{
-        const resp = await fetchWithTimeout('https://libretranslate.de/translate', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ q: text, source: 'auto', target: 'ru', format: 'text' }) }, 10000);
-        if(!resp.ok) throw new Error('Bad status');
-        const data = await resp.json(); return data.translatedText;
-      } catch(err){ console.warn('libre translate failed', err); return null; }
-    }
-    function googleTranslateUrl(text){ return 'https://translate.google.com/?sl=auto&tl=ru&text=' + encodeURIComponent(text) + '&op=translate'; }
+    // Translations removed: no background translation or external translators are used.
 
     // Simple escaping
     function escapeHtml(s){ if(!s) return ''; return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
@@ -307,11 +328,12 @@
     function applyTheme(){ const saved = localStorage.getItem(LS_THEME); if(saved==='dark') { document.documentElement.style.setProperty('--bg','#071022'); } else if(saved==='light'){ document.documentElement.style.setProperty('--bg','#f6f7fb'); document.documentElement.style.setProperty('--text','#071022'); } }
 
     // Bind UI
-    document.getElementById('btnLoad').addEventListener('click', ()=>{ const v = document.getElementById('inputFeed').value.trim(); if(v) { fetchUrl = v; loadNews(fetchUrl); } else loadNews(); });
-    document.getElementById('btnClose').addEventListener('click', ()=>{ if(window.Telegram && Telegram.WebApp && Telegram.WebApp.close) Telegram.WebApp.close(); else alert('Закрыть (имитация)'); });
-    document.getElementById('btnToggleTheme').addEventListener('click', ()=>{ const cur = localStorage.getItem(LS_THEME); const next = cur==='dark'?'light':'dark'; localStorage.setItem(LS_THEME,next); applyTheme(); });
-    document.getElementById('bgToggle').addEventListener('click', ()=>{ const cur = localStorage.getItem(LS_BG)==='1'; localStorage.setItem(LS_BG, cur ? '0' : '1'); updateBgToggle(); });
-    document.getElementById('fabTranslate').addEventListener('click', ()=>{ news.forEach(it=>enqueueTranslate(it.id, it.title + '\n\n' + (it.summary||''))); processTranslateQueue(); setStatus('Очередь отправлена'); });
+  document.getElementById('btnLoad').addEventListener('click', ()=>{ const v = document.getElementById('inputFeed').value.trim(); if(v) { fetchUrl = v; loadNews(fetchUrl); } else loadNews(); });
+  document.getElementById('btnClose').addEventListener('click', ()=>{ if(window.Telegram && Telegram.WebApp && Telegram.WebApp.close) Telegram.WebApp.close(); else alert('Закрыть (имитация)'); });
+  const themeBtn = document.getElementById('btnToggleTheme'); if(themeBtn) themeBtn.addEventListener('click', ()=>{ const cur = localStorage.getItem(LS_THEME); const next = cur==='dark'?'light':'dark'; localStorage.setItem(LS_THEME,next); applyTheme(); });
+  const bgToggleBtn = document.getElementById('bgToggle'); if(bgToggleBtn) bgToggleBtn.addEventListener('click', ()=>{ const cur = localStorage.getItem(LS_BG)==='1'; localStorage.setItem(LS_BG, cur ? '0' : '1'); updateBgToggle(); });
+  // Load more button
+  const loadMoreBtn = document.getElementById('btnLoadMore'); if(loadMoreBtn){ loadMoreBtn.addEventListener('click', ()=>{ if(!news || !news.length) return; displayedCount = Math.min(news.length, displayedCount + PAGE_SIZE); renderNews(); }); }
 
     function updateBgToggle(){ const on = localStorage.getItem(LS_BG)!=='0'; const el = document.getElementById('bgToggle'); el.classList.toggle('on', on); if(on){ resizeCanvas(); createStars(); drawBg(); } }
 
@@ -319,12 +341,15 @@
     window.addEventListener('resize', resizeCanvas);
     window.addEventListener('load', ()=>{
       applyTheme();
-      document.getElementById('inputFeed').value = fetchUrl;
+      // populate source selector and restore selection
+      try{ loadSources(); }catch(e){ console.warn('loadSources failed', e); }
       // restore cached data
       try{ const cached = JSON.parse(localStorage.getItem(LS_LAST)||'null'); if(cached && cached.length){ news = cached; } }catch(e){}
       try{ favs = new Set(JSON.parse(localStorage.getItem(LS_FAV)||'[]')); }catch(e){ favs = new Set(); }
-      translateCache = JSON.parse(localStorage.getItem(LS_TR)||'{}');
-      renderNews(); updateBgToggle(); loadNews();
+      // if a saved source exists, load it; otherwise show default fetchUrl
+      const savedSrc = localStorage.getItem(LS_SRC);
+      if(savedSrc){ document.getElementById('inputFeed').value = (SOURCES.find(s=>s.id===savedSrc)||{}).url || fetchUrl; renderNews(); updateBgToggle(); loadNewsById(savedSrc); }
+      else { document.getElementById('inputFeed').value = fetchUrl; renderNews(); updateBgToggle(); loadNews(); }
     });
 
     // Global error handlers for debugging

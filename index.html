@@ -42,8 +42,16 @@
         .toggle.on .dot{left:21px;}
         .empty{text-align:center;color:var(--muted);padding:40px 8px;}
         #debugBanner{display:none;padding:8px 12px;font-size:13px;color:var(--muted);background:rgba(255,0,0,0.03);margin-top:8px;border-radius:8px}
+    /* canvas background sits behind the app */
+    #bgCanvas{position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;display:block}
+    /* translucent overlay to keep text readable over animated background */
+    .app{position:relative;z-index:2}
+    .app::before{content:"";position:absolute;inset:0;background:var(--app-overlay, rgba(255,255,255,0.88));backdrop-filter: blur(6px);-webkit-backdrop-filter: blur(6px);z-index:1;pointer-events:none}
+    .app > *{position:relative;z-index:2}
         @media (prefers-color-scheme: dark){
             :root{--bg:#0b1220;--surface:#071022;--text:#e6eef8;--muted:#9fb3d6;--accent:#2a8cff;--pill-bg:rgba(255,255,255,0.06);}
+            /* darker overlay on dark theme */
+            :root{--app-overlay: rgba(6,8,14,0.45);} 
         }
     </style>
 </head>
@@ -96,6 +104,10 @@
         <div class="settings-row">
             <div>Тёмная тема (override)</div>
             <div id="themeToggle" class="toggle" role="switch" aria-checked="false"><div class="dot"></div></div>
+        </div>
+        <div class="settings-row">
+            <div>Анимированный фон</div>
+            <div id="bgToggle" class="toggle" role="switch" aria-checked="false"><div class="dot"></div></div>
         </div>
         <div style="margin-top:12px;color:var(--muted);font-size:13px">
             Темы по умолчанию берутся из Telegram (если доступны). Переключатель сохраняет выбор локально.
@@ -492,6 +504,23 @@ init();
 
     // small safety: initialize after a tick
     setTimeout(init, 50);
+})();
+</script>
+<script>
+// Hook the Settings toggle (bgToggle) to the background API
+(function(){
+    function safe(fn){ try{ fn(); }catch(e){ console.warn('bgToggle hook error', e); } }
+    const el = document.getElementById('bgToggle');
+    if(!el) return;
+    // reflect initial state
+    const setState = (on)=>{ el.classList.toggle('on', on); el.setAttribute('aria-checked', on ? 'true' : 'false'); };
+    safe(()=> setState( window.__MiniAppBg && window.__MiniAppBg.enabled ? window.__MiniAppBg.enabled() : (localStorage.getItem('tg_minapp_bg_anim_v1') !== '0') ));
+    el.addEventListener('click', ()=>{
+        const enabled = safe(()=> window.__MiniAppBg.toggle());
+        // if safe() returned undefined, fallback to reading localStorage
+        const isEnabled = (enabled === undefined) ? (localStorage.getItem('tg_minapp_bg_anim_v1') !== '0') : enabled;
+        setState(isEnabled);
+    });
 })();
 </script>
 

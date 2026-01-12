@@ -1,812 +1,336 @@
 <!doctype html>
-<!doctype html>
 <html lang="ru">
 <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Моя лента — Telegram Mini App</title>
-    <style>
-        /* --- Минималистичный мобильный стиль --- */
-        :root{
-            --bg:#ffffff;
-            --surface:#f6f7f9;
-            --text:#111827;
-            --muted:#6b7280;
-            --accent:#2a8cff;
-            --pill-bg:#e6f0ff;
-        }
-        html,body{height:100%;margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;background:var(--bg);color:var(--text);-webkit-text-size-adjust:100%;}
-        .app{min-height:100vh;display:flex;flex-direction:column;}
-        header{padding:12px 16px;background:var(--surface);border-bottom:1px solid rgba(0,0,0,0.06);display:flex;flex-direction:column;gap:6px;position:sticky;top:0;z-index:3;}
-        header .title-row{display:flex;align-items:center;justify-content:space-between;gap:12px}
-        header h1{margin:0;font-size:17px;font-weight:600;}
-        header .user{font-size:13px;color:var(--muted)}
-        main{padding:12px 12px 96px;flex:1 1 auto;}
-        .news-list{display:flex;flex-direction:column;gap:10px;}
-        .card{background:linear-gradient(180deg, rgba(255,255,255,0.6), transparent), var(--bg);border-radius:10px;padding:12px;box-shadow:0 1px 0 rgba(0,0,0,0.04);border:1px solid rgba(0,0,0,0.04);cursor:pointer;}
-        .card h3{margin:0 0 6px 0;font-size:15px;line-height:1.2;}
-        .card p{margin:0;color:var(--muted);font-size:13px;line-height:1.4;max-height:3.2em;overflow:hidden;}
-        .meta{margin-top:8px;font-size:12px;color:var(--muted);display:flex;justify-content:space-between;align-items:center;}
-        .fav-btn{background:transparent;border:0;color:var(--accent);font-weight:600;font-size:12px;padding:6px 8px;border-radius:8px;cursor:pointer;}
-        .bottom-bar{position:fixed;left:0;right:0;bottom:0;display:flex;gap:8px;padding:10px;background:var(--surface);border-top:1px solid rgba(0,0,0,0.06);justify-content:space-between;align-items:center;z-index:4;}
-        .btn{background:var(--accent);color:white;border:0;padding:10px 12px;border-radius:10px;font-weight:600;font-size:14px;flex:1;margin:0 6px;max-width:160px;}
-        .btn.ghost{background:transparent;border:1px solid rgba(0,0,0,0.06);color:var(--text);}
-        .modal-backdrop{position:fixed;left:0;right:0;top:0;bottom:0;background:rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;z-index:10;padding:18px;}
-        .modal{width:100%;max-width:720px;background:var(--bg);border-radius:12px;padding:16px;box-shadow:0 12px 30px rgba(0,0,0,0.2);max-height:90vh;overflow:auto;}
-        .modal h3{margin:0 0 8px 0;}
-        .modal .close{float:right;background:transparent;border:0;font-size:18px;color:var(--muted);cursor:pointer;}
-        .settings-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-top:1px solid rgba(0,0,0,0.04);}
-        .toggle{width:44px;height:26px;background:var(--pill-bg);border-radius:20px;position:relative;cursor:pointer;flex:0 0 auto;}
-        .toggle .dot{width:20px;height:20px;background:white;border-radius:50%;position:absolute;top:3px;left:3px;transition:all .18s;box-shadow:0 1px 2px rgba(0,0,0,0.08);}
-        .toggle.on{background:var(--accent);}
-        .toggle.on .dot{left:21px;}
-        .empty{text-align:center;color:var(--muted);padding:40px 8px;}
-        #debugBanner{display:none;padding:8px 12px;font-size:13px;color:var(--muted);background:rgba(255,0,0,0.03);margin-top:8px;border-radius:8px}
-    /* canvas background sits behind the app */
-    #bgCanvas{position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;display:block}
-    /* translucent overlay to keep text readable over animated background */
-    :root{--app-overlay: rgba(255,255,255,0.65);} /* default lighter overlay */
-    .app{position:relative;z-index:2}
-    .app::before{content:"";position:absolute;inset:0;background:var(--app-overlay);backdrop-filter: blur(3px);-webkit-backdrop-filter: blur(3px);z-index:1;pointer-events:none}
-    .app > *{position:relative;z-index:2}
-        @media (prefers-color-scheme: dark){
-            :root{--bg:#0b1220;--surface:#071022;--text:#e6eef8;--muted:#9fb3d6;--accent:#2a8cff;--pill-bg:rgba(255,255,255,0.06);} 
-            /* darker, more transparent overlay on dark theme so stars remain visible */
-            :root{--app-overlay: rgba(6,8,14,0.24);} 
-        }
-    </style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Telegram MiniApp — Моя лента</title>
+  <style>
+    :root{
+      --bg:#071022; --surface:#081426; --text:#e6eef8; --muted:#9fb3d6; --accent:#2a8cff;
+      --accent-rgb:42,140,255; --pill-bg:rgba(255,255,255,0.04); --btn-alpha:0.12
+    }
+    html,body{height:100%;margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,'Helvetica Neue',Arial}
+    body{background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased}
+    canvas#bgCanvas{position:fixed;left:0;top:0;right:0;bottom:0;z-index:0;pointer-events:none}
+    .app{position:relative;z-index:2;max-width:960px;margin:0 auto}
+    header{position:sticky;top:0;z-index:3;background:linear-gradient(180deg, rgba(6,10,20,0.28), transparent);padding:14px}
+    .title-row{display:flex;align-items:center;justify-content:space-between}
+    h1{font-size:18px;margin:0}
+    .user{color:var(--muted);font-size:13px;margin-top:6px}
+    main{padding:12px 18px 110px}
+    .news-list{display:flex;flex-direction:column;gap:10px}
+    .card{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));border-radius:10px;padding:12px;cursor:pointer;border:1px solid rgba(255,255,255,0.03)}
+    .card h4{margin:0 0 6px 0}
+    .card p{margin:0;color:var(--muted);font-size:13px}
+    .meta{display:flex;justify-content:space-between;margin-top:8px;font-size:12px;color:var(--muted)}
+    .bottom-bar{position:fixed;left:50%;transform:translateX(-50%);bottom:18px;background:rgba(6,10,20,0.6);padding:8px;border-radius:999px;display:flex;gap:8px;z-index:4}
+    .btn{background:rgba(var(--accent-rgb),var(--btn-alpha));border:0;padding:8px 12px;border-radius:8px;color:var(--text);cursor:pointer}
+    .btn.ghost{background:transparent;border:1px solid rgba(255,255,255,0.04)}
+    .fab-translate{position:fixed;right:18px;bottom:96px;background:rgba(var(--accent-rgb),0.98);color:white;border-radius:999px;padding:12px 14px;z-index:5;box-shadow:0 6px 18px rgba(0,0,0,0.4);cursor:pointer}
+    .modal-backdrop{position:fixed;left:0;top:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.45);z-index:6}
+    .modal{background:var(--surface);padding:14px;border-radius:12px;max-width:820px;width:94%;box-shadow:0 8px 30px rgba(0,0,0,0.6);color:var(--text);position:relative}
+    .modal .close{position:absolute;right:18px;top:18px;background:transparent;border:0;color:var(--muted);cursor:pointer}
+    .debug{position:fixed;left:10px;bottom:80px;background:#fffb;color:#000;padding:8px;border-radius:6px;z-index:6;font-size:13px}
+    .toggle{width:42px;height:26px;background:rgba(255,255,255,0.06);border-radius:999px;display:inline-flex;align-items:center;padding:4px;cursor:pointer}
+    .toggle.on{background:rgba(var(--accent-rgb),0.22)}
+    .toggle .dot{width:18px;height:18px;background:white;border-radius:50%;transform:translateX(0);transition:transform .18s}
+    .toggle.on .dot{transform:translateX(16px)}
+    .badge{background:rgba(255,255,255,0.04);padding:4px 8px;border-radius:999px;font-size:12px;color:var(--muted)}
+    .skeleton{height:14px;background:linear-gradient(90deg, rgba(255,255,255,0.02), rgba(255,255,255,0.04));border-radius:6px}
+    a{color:inherit}
+  </style>
 </head>
 <body>
-<!-- Animated background canvas (stars & planets) -->
-<canvas id="bgCanvas" aria-hidden="true"></canvas>
-<div class="app" id="app">
+  <canvas id="bgCanvas"></canvas>
+  <div class="app" id="app">
     <header>
-        <div class="title-row">
-            <h1>Моя лента</h1>
-            <div style="display:flex;gap:8px;align-items:center">
-                <button id="btnClose" class="btn ghost" title="Закрыть приложение" style="padding:8px 10px;max-width:120px">✖ Закрыть</button>
-            </div>
+      <div class="title-row">
+        <div>
+          <h1>Моя лента</h1>
+          <div class="user" id="userInfo">Загрузка…</div>
         </div>
-        <div class="user" id="userInfo">Загрузка данных пользователя…</div>
-
-        <!-- DEBUG: отображает статус и ошибки при запуске в WebApp -->
-        <div id="debugBanner" aria-live="polite"></div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button id="btnClose" class="btn ghost" title="Закрыть приложение">✖ Закрыть</button>
+        </div>
+      </div>
     </header>
-
     <main>
-        <div id="news" class="news-list" aria-live="polite"></div>
-        <div id="empty" class="empty" style="display:none">Новостей нет. Нажмите «Обновить».</div>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
+        <input id="inputFeed" placeholder="rss:https://example.com/feed.xml или https://api.example.com/news.json" style="flex:1;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:var(--text)" />
+        <button id="btnLoad" class="btn">Загрузить</button>
+      </div>
+      <div id="news" class="news-list"></div>
     </main>
 
-    <nav class="bottom-bar" role="navigation" aria-label="Нижняя панель">
-        <button id="btnRefresh" class="btn ghost">🔄 Обновить</button>
-        <button id="btnFav" class="btn">☆ Избранное</button>
-        <button id="btnSettings" class="btn ghost">⚙️ Настройки</button>
-    </nav>
-</div>
-
-<!-- модальные контейнеры -->
-<div id="modalDetail" class="modal-backdrop" style="display:none" role="dialog" aria-modal="true">
-    <div class="modal" role="document">
-        <button class="close" id="detailClose" aria-label="Закрыть">✕</button>
-        <h3 id="detailTitle"></h3>
-        <div style="color:var(--muted);font-size:13px;margin-bottom:8px" id="detailDate"></div>
-        <p id="detailContent" style="white-space:pre-wrap"></p>
-        <div style="margin-top:12px;text-align:right">
-            <button id="detailFav" class="fav-btn">Добавить в избранное</button>
-        </div>
+    <div class="bottom-bar">
+      <button id="btnToggleTheme" class="btn ghost">Тема</button>
+      <label style="display:flex;gap:8px;align-items:center;color:var(--muted)">
+        <div>Фон</div>
+        <div id="bgToggle" class="toggle"><div class="dot"></div></div>
+      </label>
+      <div style="width:12px"></div>
+      <div class="badge" id="statusBadge">—</div>
     </div>
-</div>
 
-<div id="modalSettings" class="modal-backdrop" style="display:none" role="dialog" aria-modal="true">
-    <div class="modal" role="document">
-        <button class="close" id="settingsClose" aria-label="Закрыть">✕</button>
-        <h3>Настройки</h3>
-        <div class="settings-row">
-            <div>Тёмная тема (override)</div>
-            <div id="themeToggle" class="toggle" role="switch" aria-checked="false"><div class="dot"></div></div>
+    <button id="fabTranslate" class="fab-translate">Перевести всё</button>
+  </div>
+
+  <template id="cardTpl">
+    <div class="card">
+      <h4 class="ttl"></h4>
+      <p class="desc"></p>
+      <div class="meta">
+        <div class="source"></div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <div class="badge trBadge" style="display:none">TR</div>
+          <button class="btn btnFav">★</button>
         </div>
-        <div class="settings-row">
-            <div>Анимированный фон</div>
-            <div id="bgToggle" class="toggle" role="switch" aria-checked="false"><div class="dot"></div></div>
-        </div>
-        <div style="margin-top:12px;color:var(--muted);font-size:13px">
-            Темы по умолчанию берутся из Telegram (если доступны). Переключатель сохраняет выбор локально.
-        </div>
+      </div>
     </div>
-</div>
+  </template>
 
-<script>
-/*
-  Telegram Mini App — одностраничный файл.
-  - mock data по умолчанию, можно заменить fetchUrl на внешний API
-  - интеграция с window.Telegram.WebApp
-  - favorites в localStorage
-  - тема из themeParams с возможностью override
-*/
+  <div id="modalRoot" style="display:none"></div>
 
-/* ========== Конфигурация ========== */
-// Если нужно получать новости с сервера, поставьте fetchUrl = '/fetch' (или любой HTTPS-endpoint)
-const fetchUrl = null; // '/fetch' или null -> использовать mock BASE_NEWS
+  <script>
+    // Minimal Telegram.WebApp shim for local testing
+    window.Telegram = window.Telegram || { WebApp: { initData: null, initDataUnsafe: {}, platform: 'web' }};
 
-/* ========== Mock data (легко заменить) ========== */
-const BASE_NEWS = [
-    { id:'1', title:'Новый городской парк открылся в центре', excerpt:'Парк предлагает зоны для прогулок, детскую площадку и велодорожки.', content:'Сегодня в центре города открылся новый городской парк. Он включает прогулочные аллеи, современную детскую площадку, зоны для пикника и велосипедные дорожки. Ожидается, что парк станет популярным местом для семейных прогулок и мероприятий.', date:'2026-01-11' },
-    { id:'2', title:'Технологический стартап привлёк инвестиций', excerpt:'Компания закрыла раунд инвестиций на стадии seed и готовит продукт к запуску.', content:'Стартап, разрабатывающий решения для автоматизации рутинных задач, привлёк $1.2M в раунде seed. Средства пойдут на расширение команды и запуск бета-версии продукта для корпоративных клиентов.', date:'2026-01-10' },
-    { id:'3', title:'Местные выборы прошли в штатном режиме', excerpt:'Явка избирателей превысила ожидания, наблюдаются небольшие нарушения.', content:'Выборы прошли с высокой явкой. Наблюдатели отмечают единичные нарушения процедур, которые не повлияли на итог.', date:'2026-01-09' },
-    { id:'4', title:'Советы по продуктивности: 5 простых шагов', excerpt:'Небольшие привычки, которые можно внедрить уже сегодня.', content:'1) Планируйте утро; 2) Разбивайте задачи на блоки; 3) Отключайте уведомления; 4) Деляйте большой проект на этапы; 5) Регулярно делайте паузы.', date:'2026-01-08' }
-];
+    // LocalStorage keys
+    const LS_FAV = 'tg_minapp_fav_v1';
+    const LS_LAST = 'tg_minapp_last_v1';
+    const LS_BG = 'tg_minapp_bg_anim_v1';
+    const LS_THEME = 'tg_minapp_theme_override';
+    const LS_TR = 'tg_minapp_tr_v1';
 
-/* ========== State и ключи localStorage ========== */
-let news = [...BASE_NEWS];
-let showOnlyFav = false;
-const LS_FAV = 'tg_minapp_fav_v1';
-const LS_THEME = 'tg_minapp_theme_override';
+    // Config: change to your feed. Supports 'rss:<URL>' or 'https://.../json'
+    let fetchUrl = 'rss:https://rss.nytimes.com/services/xml/rss/nyt/World.xml';
 
-/* ========== Утилиты ========== */
-const $ = id => document.getElementById(id);
-const loadFav = () => JSON.parse(localStorage.getItem(LS_FAV) || '[]');
-const saveFav = arr => localStorage.setItem(LS_FAV, JSON.stringify(arr));
-const isFav = id => loadFav().includes(id);
-const toggleFav = id => { const fav = loadFav(); const i = fav.indexOf(id); if(i>=0) fav.splice(i,1); else fav.push(id); saveFav(fav); };
+    // Small mock fallback
+    const BASE_NEWS = [{id:'m1',title:'Пример новости',summary:'Короткое описание',link:'#',source:'Пример'}];
 
-function escapeHtml(s){ return String(s).replace(/[&<>\"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
-function formatDate(d){ try{ const dt = new Date(d); return dt.toLocaleDateString(); }catch(e){ return d; } }
-function setToggle(id, on){ const el = $(id); if(!el) return; el.classList.toggle('on', on); el.setAttribute('aria-checked', on ? 'true' : 'false'); }
+    let news = [];
+    let isLoading = false;
+    let favs = new Set(JSON.parse(localStorage.getItem(LS_FAV)||'[]'));
+    let translateCache = JSON.parse(localStorage.getItem(LS_TR)||'{}');
+    let translateQueue = [];
+    let isProcessingQueue = false;
 
-/* ========== Рендеринг ленты ========== */
-function renderNews(){
-    const container = $('news');
-    container.innerHTML = '';
-    let list = news.slice();
-    if(showOnlyFav) list = list.filter(n => isFav(n.id));
-    if(list.length === 0){ $('empty').style.display = 'block'; return; } else $('empty').style.display='none';
-    list.forEach(item => {
-        const card = document.createElement('article');
-        card.className = 'card';
-        card.setAttribute('tabindex','0');
-        card.innerHTML = `<h3>${escapeHtml(item.title)}</h3>` +
-                          `<p>${escapeHtml(item.excerpt)}</p>` +
-                          `<div class=\"meta\"><span>${escapeHtml(formatDate(item.date))}</span><button class=\"fav-btn\" data-id=\"${item.id}\">${isFav(item.id)?'★ Убранное':'☆ В избранное'}</button></div>`;
-        card.addEventListener('click', ()=> openDetail(item.id));
-        card.addEventListener('keydown', (e)=>{ if(e.key==='Enter') openDetail(item.id); });
-        card.querySelector('.fav-btn').addEventListener('click', (ev)=>{
-            ev.stopPropagation();
-            toggleFav(ev.currentTarget.getAttribute('data-id'));
-            renderNews();
-        });
-        container.appendChild(card);
-    });
-}
+    const $ = (sel,root=document)=>root.querySelector(sel);
+    const $$ = (sel,root=document)=>Array.from(root.querySelectorAll(sel));
 
-/* ========== Модальное окно подробностей ========== */
-function openDetail(id){
-    const item = news.find(n => n.id === id);
-    if(!item) return;
-    $('detailTitle').textContent = item.title;
-    $('detailDate').textContent = formatDate(item.date);
-    $('detailContent').textContent = item.content;
-    $('detailFav').textContent = isFav(id) ? 'Убрать из избранного' : 'Добавить в избранное';
-    $('detailFav').onclick = () => { toggleFav(id); $('detailFav').textContent = isFav(id) ? 'Убрать из избранного' : 'Добавить в избранное'; renderNews(); };
-    $('modalDetail').style.display = 'flex';
-}
-function closeDetail(){ $('modalDetail').style.display = 'none'; }
+    // Utilities
+    function saveFavs(){ localStorage.setItem(LS_FAV, JSON.stringify(Array.from(favs))); }
+    function saveTranslateCache(){ localStorage.setItem(LS_TR, JSON.stringify(translateCache)); }
+    function setStatus(text){ $('#statusBadge').textContent = text; }
 
-/* ========== Settings modal и тема ========== */
-function applyTelegramTheme(themeParams){
-    // override из localStorage: 'dark' | 'light' | null
-    const override = localStorage.getItem(LS_THEME);
-    const tgIsDark = themeParams?.theme === 'dark' || themeParams?.is_dark;
-    const isDark = override ? (override === 'dark') : tgIsDark;
-    const tp = themeParams || {};
-    const bg = tp.bg_color || tp.background_color || (isDark ? '#0b1220' : '#ffffff');
-    const surface = tp.secondary_bg_color || (isDark ? '#071022' : '#f6f7f9');
-    const text = tp.text_color || (isDark ? '#e6eef8' : '#111827');
-    const muted = tp.hint_color || (isDark ? '#9fb3d6' : '#6b7280');
-    const accent = tp.button_color || tp.accent_color || '#2a8cff';
-    const pill = tp.section_bg_color || (isDark ? 'rgba(255,255,255,0.06)' : '#e6f0ff');
-
-    const set = (k,v) => document.documentElement.style.setProperty(k, v);
-    set('--bg', bg); set('--surface', surface); set('--text', text); set('--muted', muted); set('--accent', accent); set('--pill-bg', pill);
-    setToggle('themeToggle', isDark);
-}
-
-/* ========== Debug helpers ========== */
-function showDebug(msg, isError = false, details){
-    const el = $('debugBanner');
-    if(!el) return;
-    el.style.display = 'block';
-    el.style.color = isError ? '#c92a2a' : 'var(--muted)';
-    // set main text
-    try{ el.textContent = (typeof msg === 'string') ? msg : JSON.stringify(msg); }catch(e){ el.textContent = String(msg); }
-
-    // attach optional details (stack or object)
-    const prev = el.querySelector('pre'); if(prev) prev.remove();
-    if(details){
-        const pre = document.createElement('pre');
-        pre.style.whiteSpace = 'pre-wrap'; pre.style.marginTop = '6px'; pre.style.color = 'inherit';
-        pre.textContent = (typeof details === 'string') ? details : JSON.stringify(details, null, 2);
-        el.appendChild(pre);
+    // Fetch helpers
+    async function fetchWithTimeout(url, opts={}, ms=12000){
+      const controller = new AbortController();
+      const id = setTimeout(()=>controller.abort(), ms);
+      try{ const res = await fetch(url, {...opts, signal:controller.signal}); clearTimeout(id); return res; } catch(e){ clearTimeout(id); throw e; }
     }
 
-    // console log for easier remote debugging
-    try{ console[isError ? 'error' : 'log']('[MiniApp Debug]', msg, details || ''); }catch(e){}
-}
-function hideDebug(){ const el = $('debugBanner'); if(el) el.style.display='none'; }
-
-// Global error handlers to capture unexpected failures inside Telegram WebView
-window.addEventListener('error', function(e){
-    const msg = e && (e.message || e.type) ? (e.message || e.type) : 'Script error';
-    const stack = e && e.error && e.error.stack ? e.error.stack : (e.filename ? `${e.filename}:${e.lineno}:${e.colno}` : 'no-stack');
-    showDebug(msg, true, stack);
-    console.error('[MiniApp window.onerror]', e);
-});
-
-window.addEventListener('unhandledrejection', function(ev){
-    const reason = ev && ev.reason ? ev.reason : 'unknown';
-    const details = reason && reason.stack ? reason.stack : (typeof reason === 'object' ? JSON.stringify(reason) : String(reason));
-    showDebug('Unhandled promise rejection', true, details);
-    console.error('[MiniApp unhandledrejection]', ev);
-});
-
-/* ========== Загрузка новостей (mock или fetch) ========== */
-async function loadNews(){
-    if(fetchUrl){
+    async function fetchRssViaAllOrigins(rssUrl){
+      // Try a few public CORS proxies in order to improve success rate in browsers.
+      const proxies = [
+        { url: url => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url), type: 'text' },
+        { url: url => 'https://api.allorigins.win/get?url=' + encodeURIComponent(url), type: 'json' }
+      ];
+      let lastErr = null;
+      for(const p of proxies){
         try{
-            const res = await fetch(fetchUrl, { cache: "no-store" });
-            if(!res.ok) throw new Error('fetch failed: ' + res.status);
-            const data = await res.json();
-            news = Array.isArray(data) ? data : news;
-        }catch(e){
-            console.warn('Fetch news failed, falling back to mock', e);
-            showDebug('Ошибка загрузки новостей: ' + (e.message||e), true);
-            news = [...BASE_NEWS];
+          setStatus('Прокси: ' + (p.type) + ' — загрузка...');
+          const res = await fetchWithTimeout(p.url(rssUrl), {}, 12000);
+          if(!res.ok) throw new Error('proxy returned ' + res.status);
+          let txt = null;
+          if(p.type === 'json'){
+            const j = await res.json(); txt = j && (j.contents || j.contents_text || j.contents_html) ? (j.contents || j.contents_text || j.contents_html) : JSON.stringify(j);
+          } else {
+            txt = await res.text();
+          }
+          const doc = new DOMParser().parseFromString(txt, 'application/xml');
+          const items = Array.from(doc.querySelectorAll('item,entry'));
+          if(!items.length) throw new Error('no items parsed from RSS');
+          setStatus('Прокси успешен');
+          return items.map((it,i)=>({
+            id: 'rss-' + (it.querySelector('guid')?.textContent || i + '-' + (it.querySelector('title')?.textContent||'')),
+            title: it.querySelector('title')?.textContent || it.querySelector('title')?.textContent || 'Без названия',
+            summary: it.querySelector('description')?.textContent || it.querySelector('summary')?.textContent || '',
+            link: it.querySelector('link')?.textContent || it.querySelector('id')?.textContent || '#',
+            source: doc.querySelector('channel > title')?.textContent || 'RSS'
+          }));
+        }catch(err){
+          console.warn('fetchRssViaAllOrigins proxy failed:', p, err);
+          lastErr = err;
+          // try next proxy
         }
-    } else {
-        news = [...BASE_NEWS];
+      }
+      // If all proxies failed, surface a clear error
+      setStatus('Ошибка загрузки RSS (прокси недоступны)');
+      throw lastErr || new Error('all proxies failed');
     }
-    renderNews();
-}
 
-/* ========== Обновление (симуляция + реальная загрузка) ========== */
-async function refresh(){
-    if(fetchUrl){
-        await loadNews();
-    } else {
-        const now = new Date();
-        const id = String(Date.now());
-        const title = `Свежая новость ${now.toLocaleTimeString()}`;
-        news.unshift({ id, title, excerpt: 'Это автоматически сгенерированная тестовая новость.', content: title + '\n\nПодробности отсутствуют в mock.', date: now.toISOString().slice(0,10) });
-        renderNews();
-    }
-}
-
-/* ========== Инициализация приложения и интеграция с Telegram ========== */
-function init(){
-    // кнопки
-    $('btnRefresh').addEventListener('click', ()=> refresh());
-    $('btnFav').addEventListener('click', ()=>{
-        showOnlyFav = !showOnlyFav;
-        $('btnFav').textContent = showOnlyFav ? '🔖 Показать все' : '☆ Избранное';
-        renderNews();
-    });
-    $('btnSettings').addEventListener('click', ()=> $('modalSettings').style.display = 'flex');
-    $('btnClose').addEventListener('click', ()=> {
-        const WebApp = window.Telegram?.WebApp;
-        if(WebApp && typeof WebApp.close === 'function') WebApp.close();
-        else window.close();
-    });
-
-    // модалки: закрыть по клику на фон или крестику
-    $('detailClose').addEventListener('click', closeDetail);
-    $('modalDetail').addEventListener('click', (e)=> { if(e.target === $('modalDetail')) closeDetail(); });
-    $('settingsClose').addEventListener('click', ()=> $('modalSettings').style.display = 'none');
-    $('modalSettings').addEventListener('click', (e)=> { if(e.target === $('modalSettings')) $('modalSettings').style.display = 'none'; });
-
-    // переключатель темы (override)
-    $('themeToggle').addEventListener('click', ()=>{
-        const on = $('themeToggle').classList.toggle('on');
-        setToggle('themeToggle', on);
-        localStorage.setItem(LS_THEME, on ? 'dark' : 'light');
-        applyTelegramTheme(window.Telegram?.WebApp?.themeParams || {});
-    });
-
-    // Esc закрывает модалки
-    document.addEventListener('keydown', (e)=> { if(e.key === 'Escape'){ closeDetail(); $('modalSettings').style.display = 'none'; } });
-
-    // TELEGRAM INIT + диагностика
-    try {
-        const WebApp = window.Telegram?.WebApp;
-        if(!WebApp){
-            showDebug('Telegram.WebApp НЕ обнаружен — откройте приложение через кнопку web_app в боте (режим отладки).');
-            applyTelegramTheme(window.Telegram?.WebApp?.themeParams || {});
-            $('userInfo').textContent = 'Работа вне Telegram (режим отладки)';
+    async function loadNews(url){
+      isLoading = true; renderNews();
+      setStatus('Загрузка...');
+      let items = [];
+      try{
+        if(!url) url = fetchUrl;
+        if(url.startsWith('rss:')){
+          const r = url.slice(4);
+          items = await fetchRssViaAllOrigins(r);
         } else {
-            try{ WebApp.ready(); }catch(e){ console.warn('WebApp.ready() error', e); }
-            const user = WebApp.initDataUnsafe?.user;
-            if(user){
-                const name = [user.first_name, user.last_name].filter(Boolean).join(' ');
-                const username = user.username ? ('@' + user.username) : '';
-                $('userInfo').textContent = name + (username ? ' · ' + username : '');
-            } else {
-                $('userInfo').textContent = 'Пользователь не определён';
-            }
-
-            try{
-                applyTelegramTheme(WebApp.themeParams || {});
-                if(typeof WebApp.onEvent === 'function') WebApp.onEvent('themeChanged', ()=> applyTelegramTheme(WebApp.themeParams || {}));
-                else if(typeof WebApp.onThemeChange === 'function') WebApp.onThemeChange(()=> applyTelegramTheme(WebApp.themeParams || {}));
-            }catch(e){
-                console.warn('theme apply error', e);
-            }
-
-            try{ if(typeof WebApp.expand === 'function') WebApp.expand(); }catch(e){ /* ignore */ }
-
-            try{
-                const initData = WebApp.initData;
-                if(!initData) showDebug('Telegram initData отсутствует — возможно WebApp открыт напрямую, а не через кнопку бота.', true);
-                else hideDebug();
-            }catch(e){
-                console.warn('initData check failed', e);
-            }
+          const res = await fetchWithTimeout(url, {}, 12000);
+          items = await res.json();
+          // normalize if coming as {items:[]}
+          if(Array.isArray(items.items)) items = items.items;
+          items = items.map((it,i)=>({ id: it.id || it.guid || 'j-' + i, title: it.title || it.name || 'Без названия', summary: it.summary || it.description || it.excerpt || '', link: it.url || it.link || '#', source: it.source || it.feed || 'JSON' }));
         }
-    } catch(e){
-        console.warn('Telegram init error', e);
-        showDebug('Ошибка инициализации Telegram.WebApp: ' + (e.message||e), true);
+        news = items.length ? items : BASE_NEWS;
+        localStorage.setItem(LS_LAST, JSON.stringify(news));
+        setStatus('Готово');
+      } catch(err){
+        console.error('loadNews', err);
+        setStatus('Ошибка, используем кэш');
+        const cached = JSON.parse(localStorage.getItem(LS_LAST) || 'null');
+        news = cached && cached.length ? cached : BASE_NEWS;
+      } finally{
+        isLoading = false; renderNews();
+        // enqueue translations for items that don't have cache
+        news.forEach(it=>{ if(!translateCache[it.id]) enqueueTranslate(it.id, it.title + '\n\n' + (it.summary||'')); });
+      }
     }
 
-    // начальная загрузка ленты
-    loadNews();
-}
-
-/* ========== Boot ========== */
-init();
-
-</script>
-<script>
-/* Animated background: stars and planets on a <canvas> */
-(function(){
-    const canvas = document.getElementById('bgCanvas');
-    if(!canvas) return;
-    const ctx = canvas.getContext('2d');
-    let w = 0, h = 0, dpr = Math.max(1, window.devicePixelRatio || 1);
-    let stars = [];
-    let planets = [];
-    let running = true;
-
-    function resize(){
-        w = window.innerWidth; h = window.innerHeight;
-        canvas.width = Math.floor(w * dpr);
-        canvas.height = Math.floor(h * dpr);
-        canvas.style.width = w + 'px';
-        canvas.style.height = h + 'px';
-        ctx.setTransform(dpr,0,0,dpr,0,0);
-    }
-
-    function rand(min,max){ return Math.random()*(max-min)+min; }
-
-    function createStars(){
-        stars = [];
-        // density based on area, capped for performance
-        const area = (w*h)/100000; // heuristic
-        const count = Math.min(220, Math.max(40, Math.floor(80 * area)));
-        for(let i=0;i<count;i++){
-            stars.push({
-                x: Math.random()*w,
-                y: Math.random()*h,
-                r: Math.random()*1.2 + 0.3,
-                speed: Math.random()*0.2 + 0.02,
-                alpha: Math.random()*0.7 + 0.3,
-                twinkle: Math.random()*0.02 + 0.005
-            });
+    // Render
+    function renderNews(){
+      const root = $('#news'); root.innerHTML = '';
+      if(isLoading){
+        for(let i=0;i<4;i++){
+          const s = document.createElement('div'); s.className='card'; s.innerHTML='<div class="skeleton" style="width:60%"></div><div style="height:8px"></div><div class="skeleton" style="width:90%"></div>'; root.appendChild(s);
         }
+        return;
+      }
+      news.forEach(it=>{
+        const tpl = document.getElementById('cardTpl');
+        const node = tpl.content.firstElementChild.cloneNode(true);
+        node.querySelector('.ttl').textContent = it.title;
+        node.querySelector('.desc').textContent = it.summary ? (it.summary.replace(/<[^>]+>/g,'').slice(0,220)) : '';
+        node.querySelector('.source').textContent = it.source || '';
+        const favBtn = node.querySelector('.btnFav');
+        favBtn.textContent = favs.has(it.id) ? '★' : '☆';
+        favBtn.addEventListener('click', (ev)=>{ ev.stopPropagation(); toggleFav(it.id); favBtn.textContent = favs.has(it.id) ? '★' : '☆'; });
+
+        const trBadge = node.querySelector('.trBadge');
+        if(translateCache[it.id]){ trBadge.style.display='inline-block'; }
+
+        node.addEventListener('click', (ev)=>{ if(ev.ctrlKey||ev.metaKey){ window.open(it.link,'_blank'); } else openDetail(it); });
+        root.appendChild(node);
+      });
     }
 
-    // convert HSL to RGB (h in [0,360], s,l in [0,1])
-    function hslToRgb(h, s, l){
-        h = h % 360; if(h<0) h += 360;
-        const c = (1 - Math.abs(2*l - 1)) * s;
-        const hp = h / 60;
-        const x = c * (1 - Math.abs(hp % 2 - 1));
-        let r1=0,g1=0,b1=0;
-        if(hp >= 0 && hp < 1){ r1 = c; g1 = x; b1 = 0; }
-        else if(hp < 2){ r1 = x; g1 = c; b1 = 0; }
-        else if(hp < 3){ r1 = 0; g1 = c; b1 = x; }
-        else if(hp < 4){ r1 = 0; g1 = x; b1 = c; }
-        else if(hp < 5){ r1 = x; g1 = 0; b1 = c; }
-        else { r1 = c; g1 = 0; b1 = x; }
-        const m = l - c/2;
-        return { r: Math.round((r1 + m)*255), g: Math.round((g1 + m)*255), b: Math.round((b1 + m)*255) };
+    // Modal
+    function openDetail(it){
+      const root = $('#modalRoot'); root.style.display = 'flex'; root.innerHTML = '';
+      const back = document.createElement('div'); back.className='modal-backdrop';
+      const modal = document.createElement('div'); modal.className='modal';
+      modal.innerHTML = `<button class="close">✖</button><h3>${escapeHtml(it.title)}</h3><div style="color:var(--muted);font-size:13px;margin-top:8px" id="modalSummary">${escapeHtml(it.summary||'')}</div><div style="margin-top:12px;display:flex;gap:8px"><a id="openLink" class="btn" target="_blank">Открыть</a><button id="doTranslate" class="btn ghost">Перевести</button><button id="toggleOrig" class="btn ghost">Оригинал</button></div>`;
+      back.appendChild(modal); root.appendChild(back);
+      back.addEventListener('click',(e)=>{ if(e.target===back) closeDetail(); });
+      modal.querySelector('.close').addEventListener('click',closeDetail);
+      const openLink = modal.querySelector('#openLink'); openLink.href = it.link; openLink.textContent = 'Открыть источник';
+
+      const doTranslate = modal.querySelector('#doTranslate');
+      const toggleOrig = modal.querySelector('#toggleOrig');
+      const showTranslated = ()=>{ const t = translateCache[it.id]; if(t){ modal.querySelector('#modalSummary').textContent = t; } };
+      if(translateCache[it.id]) showTranslated();
+      doTranslate.addEventListener('click', async ()=>{
+        setStatus('Перевод...');
+        const t = await translateTextQueued(it.id, it.title + '\n\n' + (it.summary||''));
+        if(t) { translateCache[it.id]=t; saveTranslateCache(); showTranslated(); updateCardTranslation(it.id,true); setStatus('Переведено'); }
+        else { setStatus('Не удалось перевести'); window.open(googleTranslateUrl(it.title + '\n\n' + (it.summary||''))); }
+      });
+      toggleOrig.addEventListener('click', ()=>{ modal.querySelector('#modalSummary').textContent = it.summary||''; });
+    }
+    function closeDetail(){ const root = $('#modalRoot'); root.style.display='none'; root.innerHTML=''; }
+
+    function updateCardTranslation(id, translated){ // marks badges in list
+      $$('#news .card').forEach(card=>{
+        const ttl = card.querySelector('.ttl').textContent;
+        // we don't keep id on card nodes; match by title as fallback
+        if(translateCache[id] && (ttl && news.find(n=>n.title===ttl && n.id===id))){ const b = card.querySelector('.trBadge'); if(b) b.style.display='inline-block'; }
+      });
     }
 
-    function createPlanets(){
-        planets = [];
-        const maxPlanets = Math.min(3, Math.floor(w/400));
-        for(let i=0;i<maxPlanets;i++){
-            const size = rand(28, 80) * (Math.min(1.6, w/400));
-            const h = Math.floor(rand(0,360));
-            const s = rand(40,70)/100;
-            const l = rand(30,60)/100;
-            const rgb = hslToRgb(h,s,l);
-            planets.push({
-                x: rand(-size, w+size),
-                y: rand(h*0.05, h*0.6),
-                r: size,
-                vx: rand(0.02, 0.3) * (i%2?1:-1),
-                color: `rgb(${rgb.r},${rgb.g},${rgb.b})`,
-                rgb: rgb,
-                ring: Math.random()>0.6
-            });
-        }
+    // Fav
+    function toggleFav(id){ if(favs.has(id)) { favs.delete(id); } else { favs.add(id); } saveFavs(); }
+
+    // Translation: Queue + cache + worker
+    function enqueueTranslate(id, text){ if(translateCache[id]) return; translateQueue.push({id,text}); processTranslateQueue(); }
+
+    async function processTranslateQueue(){
+      if(isProcessingQueue) return; isProcessingQueue = true;
+      while(translateQueue.length){
+        const job = translateQueue.shift(); try{
+          setStatus('Перевод (фон): ' + (news.find(n=>n.id===job.id)?.title||job.id).slice(0,30));
+          const t = await translateTextLibre(job.text);
+          if(t){ translateCache[job.id]=t; saveTranslateCache(); updateCardTranslation(job.id,true); }
+        } catch(e){ console.warn('translate queue item failed', e); }
+        // small pause
+        await new Promise(r=>setTimeout(r, 600));
+      }
+      isProcessingQueue = false; setStatus('Готово');
     }
 
-    function draw(){
-        if(!running) return;
-        ctx.clearRect(0,0,w,h);
+    async function translateTextQueued(id, text){ // immediate request via same API but returns result
+      try{ const res = await translateTextLibre(text); if(res){ translateCache[id]=res; saveTranslateCache(); return res; } } catch(e){ console.warn(e); } return null; }
 
-        // subtle gradient background
-        const g = ctx.createLinearGradient(0,0,0,h);
-        g.addColorStop(0, 'rgba(6,10,25,1)');
-        g.addColorStop(1, 'rgba(2,6,20,1)');
-        ctx.fillStyle = g;
-        ctx.fillRect(0,0,w,h);
-
-        // stars
-        for(const s of stars){
-            s.x -= s.speed * (dpr*0.6);
-            s.y += Math.sin((s.x+s.y)*0.0003) * 0.1;
-            s.alpha += (Math.random()-0.5)*s.twinkle;
-            s.alpha = Math.max(0.15, Math.min(1, s.alpha));
-            if(s.x < -10) s.x = w + 10;
-            ctx.beginPath();
-            ctx.fillStyle = `rgba(255,255,255,${s.alpha})`;
-            ctx.arc(s.x, s.y, s.r, 0, Math.PI*2);
-            ctx.fill();
-        }
-
-        // planets
-        for(const p of planets){
-            p.x += p.vx * (dpr*0.7);
-            if(p.x - p.r > w + 40) p.x = -p.r - 40;
-            if(p.x + p.r < -40) p.x = w + p.r + 40;
-
-            // glow
-            const grad = ctx.createRadialGradient(p.x, p.y, p.r*0.1, p.x, p.y, p.r*1.6);
-            const c = p.rgb || {r:255,g:200,b:160};
-            grad.addColorStop(0, `rgba(${c.r},${c.g},${c.b},0.95)`);
-            grad.addColorStop(0.6, `rgba(${c.r},${c.g},${c.b},0.25)`);
-            grad.addColorStop(1, 'rgba(0,0,0,0)');
-            ctx.fillStyle = grad;
-            ctx.beginPath(); ctx.arc(p.x, p.y, p.r*1.6, 0, Math.PI*2); ctx.fill();
-
-            // planet core
-            ctx.beginPath(); ctx.fillStyle = p.color; ctx.arc(p.x, p.y, p.r, 0, Math.PI*2); ctx.fill();
-
-            // ring
-            if(p.ring){
-                ctx.save();
-                ctx.translate(p.x, p.y);
-                ctx.rotate(Math.sin(p.x*0.001 + p.y*0.001) * 0.4);
-                ctx.beginPath();
-                ctx.ellipse(0, 0, p.r*1.6, p.r*0.4, 0, 0, Math.PI*2);
-                ctx.strokeStyle = 'rgba(255,255,255,0.08)';
-                ctx.lineWidth = Math.max(1, Math.floor(p.r*0.08));
-                ctx.stroke();
-                ctx.restore();
-            }
-        }
-
-        requestAnimationFrame(draw);
+    async function translateTextLibre(text){
+      // Use libretranslate public endpoint (may be rate-limited). You can replace with your own service.
+      try{
+        const resp = await fetchWithTimeout('https://libretranslate.de/translate', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ q: text, source: 'auto', target: 'ru', format: 'text' }) }, 10000);
+        if(!resp.ok) throw new Error('Bad status');
+        const data = await resp.json(); return data.translatedText;
+      } catch(err){ console.warn('libre translate failed', err); return null; }
     }
+    function googleTranslateUrl(text){ return 'https://translate.google.com/?sl=auto&tl=ru&text=' + encodeURIComponent(text) + '&op=translate'; }
 
-    // settings toggle: respect localStorage flag
-    const BG_KEY = 'tg_minapp_bg_anim_v1';
-    function isBgEnabled(){
-        const v = localStorage.getItem(BG_KEY);
-        return v === null ? true : v === '1';
-    }
+    // Simple escaping
+    function escapeHtml(s){ if(!s) return ''; return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
-    function startOrStop(){
-        if(isBgEnabled()){ running = true; canvas.style.display = 'block'; } else { running = false; canvas.style.display = 'none'; }
-    }
+    // Canvas background (light-weight)
+    const canvas = document.getElementById('bgCanvas'); const ctx = canvas.getContext('2d'); let stars = [];
+    function resizeCanvas(){ canvas.width = innerWidth; canvas.height = innerHeight; }
+    function createStars(){ stars = []; const count = Math.round((innerWidth*innerHeight)/70000); for(let i=0;i<count;i++){ stars.push({x:Math.random()*innerWidth,y:Math.random()*innerHeight,r:Math.random()*1.2+0.2,a:Math.random()*0.8+0.2,v:Math.random()*0.2-0.05}); } }
+    function drawBg(){ ctx.clearRect(0,0,canvas.width,canvas.height); for(const s of stars){ s.x += s.v; if(s.x<0) s.x = canvas.width; if(s.x>canvas.width) s.x = 0; ctx.globalAlpha = s.a; ctx.fillStyle = '#7fb2ff'; ctx.beginPath(); ctx.arc(s.x,s.y,s.r,0,Math.PI*2); ctx.fill(); } ctx.globalAlpha = 1; requestAnimationFrame(drawBg); }
 
-    // init
-    function init(){
-        resize();
-        createStars();
-        createPlanets();
-        window.addEventListener('resize', ()=>{ resize(); createStars(); createPlanets(); });
-        startOrStop();
-        requestAnimationFrame(draw);
-    }
+    // Theme & UI init
+    function applyTheme(){ const saved = localStorage.getItem(LS_THEME); if(saved==='dark') { document.documentElement.style.setProperty('--bg','#071022'); } else if(saved==='light'){ document.documentElement.style.setProperty('--bg','#f6f7fb'); document.documentElement.style.setProperty('--text','#071022'); } }
 
-    // expose a toggle method for Settings UI (if exists)
-    window.__MiniAppBg = {
-        toggle(){ const enabled = !isBgEnabled(); localStorage.setItem(BG_KEY, enabled ? '1' : '0'); startOrStop(); return enabled; },
-        enabled: isBgEnabled
-    };
+    // Bind UI
+    document.getElementById('btnLoad').addEventListener('click', ()=>{ const v = document.getElementById('inputFeed').value.trim(); if(v) { fetchUrl = v; loadNews(fetchUrl); } else loadNews(); });
+    document.getElementById('btnClose').addEventListener('click', ()=>{ if(window.Telegram && Telegram.WebApp && Telegram.WebApp.close) Telegram.WebApp.close(); else alert('Закрыть (имитация)'); });
+    document.getElementById('btnToggleTheme').addEventListener('click', ()=>{ const cur = localStorage.getItem(LS_THEME); const next = cur==='dark'?'light':'dark'; localStorage.setItem(LS_THEME,next); applyTheme(); });
+    document.getElementById('bgToggle').addEventListener('click', ()=>{ const cur = localStorage.getItem(LS_BG)==='1'; localStorage.setItem(LS_BG, cur ? '0' : '1'); updateBgToggle(); });
+    document.getElementById('fabTranslate').addEventListener('click', ()=>{ news.forEach(it=>enqueueTranslate(it.id, it.title + '\n\n' + (it.summary||''))); processTranslateQueue(); setStatus('Очередь отправлена'); });
 
-    // small safety: initialize after a tick
-    setTimeout(init, 50);
-})();
-</script>
-<script>
-// Hook the Settings toggle (bgToggle) to the background API
-(function(){
-    function safe(fn){ try{ fn(); }catch(e){ console.warn('bgToggle hook error', e); } }
-    const el = document.getElementById('bgToggle');
-    if(!el) return;
-    // reflect initial state
-    const setState = (on)=>{ el.classList.toggle('on', on); el.setAttribute('aria-checked', on ? 'true' : 'false'); };
-    safe(()=> setState( window.__MiniAppBg && window.__MiniAppBg.enabled ? window.__MiniAppBg.enabled() : (localStorage.getItem('tg_minapp_bg_anim_v1') !== '0') ));
-    el.addEventListener('click', ()=>{
-        const enabled = safe(()=> window.__MiniAppBg.toggle());
-        // if safe() returned undefined, fallback to reading localStorage
-        const isEnabled = (enabled === undefined) ? (localStorage.getItem('tg_minapp_bg_anim_v1') !== '0') : enabled;
-        setState(isEnabled);
-    });
-})();
-</script>
+    function updateBgToggle(){ const on = localStorage.getItem(LS_BG)!=='0'; const el = document.getElementById('bgToggle'); el.classList.toggle('on', on); if(on){ resizeCanvas(); createStars(); drawBg(); } }
 
-</body>
-</html>
-            :root{--bg:#0b1220;--surface:#071022;--text:#e6eef8;--muted:#9fb3d6;--accent:#2a8cff;--pill-bg:rgba(255,255,255,0.06);}
-        }
-    </style>
-</head>
-<body>
-<div class="app" id="app">
-    <header>
-        <div class="title-row">
-            <h1>Моя лента</h1>
-            <div style="display:flex;gap:8px;align-items:center">
-                <button id="btnClose" class="btn ghost" title="Закрыть приложение" style="padding:8px 10px;max-width:120px">✖ Закрыть</button>
-            </div>
-        </div>
-        <div class="user" id="userInfo">Загрузка данных пользователя…</div>
-    </header>
-
-    <main>
-        <div id="news" class="news-list" aria-live="polite"></div>
-        <div id="empty" class="empty" style="display:none">Новостей нет. Нажмите «Обновить».</div>
-    </main>
-
-    <nav class="bottom-bar" role="navigation" aria-label="Нижняя панель">
-        <button id="btnRefresh" class="btn ghost">🔄 Обновить</button>
-        <button id="btnFav" class="btn">☆ Избранное</button>
-        <button id="btnSettings" class="btn ghost">⚙️ Настройки</button>
-    </nav>
-</div>
-
-<!-- модальные контейнеры -->
-<div id="modalDetail" class="modal-backdrop" style="display:none" role="dialog" aria-modal="true">
-    <div class="modal" role="document">
-        <button class="close" id="detailClose" aria-label="Закрыть">✕</button>
-        <h3 id="detailTitle"></h3>
-        <div style="color:var(--muted);font-size:13px;margin-bottom:8px" id="detailDate"></div>
-        <p id="detailContent" style="white-space:pre-wrap"></p>
-        <div style="margin-top:12px;text-align:right">
-            <button id="detailFav" class="fav-btn">Добавить в избранное</button>
-        </div>
-    </div>
-</div>
-
-<div id="modalSettings" class="modal-backdrop" style="display:none" role="dialog" aria-modal="true">
-    <div class="modal" role="document">
-        <button class="close" id="settingsClose" aria-label="Закрыть">✕</button>
-        <h3>Настройки</h3>
-        <div class="settings-row">
-            <div>Тёмная тема (override)</div>
-            <div id="themeToggle" class="toggle" role="switch" aria-checked="false"><div class="dot"></div></div>
-        </div>
-        <div style="margin-top:12px;color:var(--muted);font-size:13px">
-            Темы по умолчанию берутся из Telegram (если доступны). Переключатель сохраняет выбор локально.
-        </div>
-    </div>
-</div>
-
-<script>
-/*
-  Telegram Mini App — одностраничный файл.
-  - mock data по умолчанию, можно заменить fetchUrl на внешний API
-  - интеграция с window.Telegram.WebApp
-  - favorites в localStorage
-  - тема из themeParams с возможностью override
-*/
-
-/* ========== Конфигурация ========== */
-// Если нужно получать новости с сервера, поставьте fetchUrl = '/fetch' (или любой HTTPS-endpoint)
-const fetchUrl = "https://saltprod.github.io/News/"; // '/fetch' или null -> использовать mock BASE_NEWS
-
-/* ========== Mock data (легко заменить) ========== */
-const BASE_NEWS = [
-    { id:'1', title:'Новый городской парк открылся в центре', excerpt:'Парк предлагает зоны для прогулок, детскую площадку и велодорожки.', content:'Сегодня в центре города открылся новый городской парк. Он включает прогулочные аллеи, современную детскую площадку, зоны для пикника и велосипедные дорожки. Ожидается, что парк станет популярным местом для семейных прогулок и мероприятий.', date:'2026-01-11' },
-    { id:'2', title:'Технологический стартап привлёк инвестиций', excerpt:'Компания закрыла раунд инвестиций на стадии seed и готовит продукт к запуску.', content:'Стартап, разрабатывающий решения для автоматизации рутинных задач, привлёк $1.2M в раунде seed. Средства пойдут на расширение команды и запуск бета-версии продукта для корпоративных клиентов.', date:'2026-01-10' },
-    { id:'3', title:'Местные выборы прошли в штатном режиме', excerpt:'Явка избирателей превысила ожидания, наблюдаются небольшие нарушения.', content:'Выборы прошли с высокой явкой. Наблюдатели отмечают единичные нарушения процедур, которые не повлияли на итог.', date:'2026-01-09' },
-    { id:'4', title:'Советы по продуктивности: 5 простых шагов', excerpt:'Небольшие привычки, которые можно внедрить уже сегодня.', content:'1) Планируйте утро; 2) Разбивайте задачи на блоки; 3) Отключайте уведомления; 4) Деляйте большой проект на этапы; 5) Регулярно делайте паузы.', date:'2026-01-08' }
-];
-
-/* ========== State и ключи localStorage ========== */
-let news = [...BASE_NEWS];
-let showOnlyFav = false;
-const LS_FAV = 'tg_minapp_fav_v1';
-const LS_THEME = 'tg_minapp_theme_override';
-
-/* ========== Утилиты ========== */
-const $ = id => document.getElementById(id);
-const loadFav = () => JSON.parse(localStorage.getItem(LS_FAV) || '[]');
-const saveFav = arr => localStorage.setItem(LS_FAV, JSON.stringify(arr));
-const isFav = id => loadFav().includes(id);
-const toggleFav = id => { const fav = loadFav(); const i = fav.indexOf(id); if(i>=0) fav.splice(i,1); else fav.push(id); saveFav(fav); };
-
-function escapeHtml(s){ return String(s).replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
-function formatDate(d){ try{ const dt = new Date(d); return dt.toLocaleDateString(); }catch(e){ return d; } }
-function setToggle(id, on){ const el = $(id); if(!el) return; el.classList.toggle('on', on); el.setAttribute('aria-checked', on ? 'true' : 'false'); }
-
-/* ========== Рендеринг ленты ========== */
-function renderNews(){
-    const container = $('news');
-    container.innerHTML = '';
-    let list = news.slice();
-    if(showOnlyFav) list = list.filter(n => isFav(n.id));
-    if(list.length === 0){ $('empty').style.display = 'block'; return; } else $('empty').style.display='none';
-    list.forEach(item => {
-        const card = document.createElement('article');
-        card.className = 'card';
-        card.setAttribute('tabindex','0');
-        card.innerHTML = `<h3>${escapeHtml(item.title)}</h3>
-                          <p>${escapeHtml(item.excerpt)}</p>
-                          <div class="meta"><span>${escapeHtml(formatDate(item.date))}</span><button class="fav-btn" data-id="${item.id}">${isFav(item.id)?'★ Убранное':'☆ В избранное'}</button></div>`;
-        card.addEventListener('click', ()=> openDetail(item.id));
-        card.addEventListener('keydown', (e)=>{ if(e.key==='Enter') openDetail(item.id); });
-        card.querySelector('.fav-btn').addEventListener('click', (ev)=>{
-            ev.stopPropagation();
-            toggleFav(ev.currentTarget.getAttribute('data-id'));
-            renderNews();
-        });
-        container.appendChild(card);
-    });
-}
-
-/* ========== Модальное окно подробностей ========== */
-function openDetail(id){
-    const item = news.find(n => n.id === id);
-    if(!item) return;
-    $('detailTitle').textContent = item.title;
-    $('detailDate').textContent = formatDate(item.date);
-    $('detailContent').textContent = item.content;
-    $('detailFav').textContent = isFav(id) ? 'Убрать из избранного' : 'Добавить в избранное';
-    $('detailFav').onclick = () => { toggleFav(id); $('detailFav').textContent = isFav(id) ? 'Убрать из избранного' : 'Добавить в избранное'; renderNews(); };
-    $('modalDetail').style.display = 'flex';
-}
-function closeDetail(){ $('modalDetail').style.display = 'none'; }
-
-/* ========== Settings modal и тема ========== */
-function applyTelegramTheme(themeParams){
-    // override из localStorage: 'dark' | 'light' | null
-    const override = localStorage.getItem(LS_THEME);
-    const tgIsDark = themeParams?.theme === 'dark' || themeParams?.is_dark;
-    const isDark = override ? (override === 'dark') : tgIsDark;
-    const tp = themeParams || {};
-    const bg = tp.bg_color || tp.background_color || (isDark ? '#0b1220' : '#ffffff');
-    const surface = tp.secondary_bg_color || (isDark ? '#071022' : '#f6f7f9');
-    const text = tp.text_color || (isDark ? '#e6eef8' : '#111827');
-    const muted = tp.hint_color || (isDark ? '#9fb3d6' : '#6b7280');
-    const accent = tp.button_color || tp.accent_color || '#2a8cff';
-    const pill = tp.section_bg_color || (isDark ? 'rgba(255,255,255,0.06)' : '#e6f0ff');
-
-    const set = (k,v) => document.documentElement.style.setProperty(k, v);
-    set('--bg', bg); set('--surface', surface); set('--text', text); set('--muted', muted); set('--accent', accent); set('--pill-bg', pill);
-    setToggle('themeToggle', isDark);
-}
-
-/* ========== Загрузка новостей (mock или fetch) ========== */
-async function loadNews(){
-    if(fetchUrl){
-        try{
-            const res = await fetch(fetchUrl, { cache: "no-store" });
-            if(!res.ok) throw new Error('fetch failed: ' + res.status);
-            const data = await res.json();
-            // ожидается массив {id,title,excerpt,content,date}
-            news = Array.isArray(data) ? data : news;
-        }catch(e){
-            console.warn('Fetch news failed, falling back to mock', e);
-            news = [...BASE_NEWS];
-        }
-    } else {
-        news = [...BASE_NEWS];
-    }
-    renderNews();
-}
-
-/* ========== Обновление (симуляция + реальная загрузка) ========== */
-async function refresh(){
-    if(fetchUrl){
-        await loadNews();
-    } else {
-        // prepend generated item
-        const now = new Date();
-        const id = String(Date.now());
-        const title = `Свежая новость ${now.toLocaleTimeString()}`;
-        news.unshift({ id, title, excerpt: 'Это автоматически сгенерированная тестовая новость.', content: title + '\n\nПодробности отсутствуют в mock.', date: now.toISOString().slice(0,10) });
-        renderNews();
-    }
-}
-
-/* ========== Инициализация приложения и интеграция с Telegram ========== */
-function init(){
-    // кнопки
-    $('btnRefresh').addEventListener('click', ()=> refresh());
-    $('btnFav').addEventListener('click', ()=>{
-        showOnlyFav = !showOnlyFav;
-        $('btnFav').textContent = showOnlyFav ? '🔖 Показать все' : '☆ Избранное';
-        renderNews();
-    });
-    $('btnSettings').addEventListener('click', ()=> $('modalSettings').style.display = 'flex');
-    $('btnClose').addEventListener('click', ()=> {
-        // prefer Telegram close, fallback window.close for debug
-        const WebApp = window.Telegram?.WebApp;
-        if(WebApp && typeof WebApp.close === 'function') WebApp.close();
-        else window.close();
+    // Boot
+    window.addEventListener('resize', resizeCanvas);
+    window.addEventListener('load', ()=>{
+      applyTheme();
+      document.getElementById('inputFeed').value = fetchUrl;
+      // restore cached data
+      try{ const cached = JSON.parse(localStorage.getItem(LS_LAST)||'null'); if(cached && cached.length){ news = cached; } }catch(e){}
+      try{ favs = new Set(JSON.parse(localStorage.getItem(LS_FAV)||'[]')); }catch(e){ favs = new Set(); }
+      translateCache = JSON.parse(localStorage.getItem(LS_TR)||'{}');
+      renderNews(); updateBgToggle(); loadNews();
     });
 
-    // модалки: закрыть по клику на фон или крестику
-    $('detailClose').addEventListener('click', closeDetail);
-    $('modalDetail').addEventListener('click', (e)=> { if(e.target === $('modalDetail')) closeDetail(); });
-    $('settingsClose').addEventListener('click', ()=> $('modalSettings').style.display = 'none');
-    $('modalSettings').addEventListener('click', (e)=> { if(e.target === $('modalSettings')) $('modalSettings').style.display = 'none'; });
+    // Global error handlers for debugging
+    window.addEventListener('error', (e)=>{ console.error('Global error', e.error||e); });
+    window.addEventListener('unhandledrejection', (e)=>{ console.error('Unhandled rejection', e.reason); });
 
-    // переключатель темы (override)
-    $('themeToggle').addEventListener('click', ()=>{
-        const on = $('themeToggle').classList.toggle('on');
-        setToggle('themeToggle', on);
-        localStorage.setItem(LS_THEME, on ? 'dark' : 'light');
-        applyTelegramTheme(window.Telegram?.WebApp?.themeParams || {});
-    });
-
-    // Esc закрывает модалки
-    document.addEventListener('keydown', (e)=> { if(e.key === 'Escape'){ closeDetail(); $('modalSettings').style.display = 'none'; } });
-
-    // инициализация данных + Telegram
-    const WebApp = window.Telegram?.WebApp;
-    try {
-        if(WebApp){
-            WebApp.ready();
-            // показать пользователя (initDataUnsafe.user) - небезопасно, но удобно для мини-приложения
-            const user = WebApp.initDataUnsafe?.user || window.Telegram?.WebApp?.initDataUnsafe?.user;
-            if(user){
-                const name = [user.first_name, user.last_name].filter(Boolean).join(' ');
-                const username = user.username ? ('@' + user.username) : '';
-                $('userInfo').textContent = name + (username ? ' · ' + username : '');
-            } else {
-                $('userInfo').textContent = 'Пользователь не определён';
-            }
-
-            // применить тему и подписаться на изменения
-            applyTelegramTheme(WebApp.themeParams || {});
-            if(typeof WebApp.onEvent === 'function'){
-                WebApp.onEvent('themeChanged', ()=> applyTelegramTheme(WebApp.themeParams || {}));
-            } else if(typeof WebApp.onThemeChange === 'function'){
-                WebApp.onThemeChange(()=> applyTelegramTheme(WebApp.themeParams || {}));
-            }
-            // попытка развернуть интерфейс (если поддерживается)
-            try{ if(typeof WebApp.expand === 'function') WebApp.expand(); }catch(e){ /* ignore */ }
-        } else {
-            // если не в Telegram, попытка применить last override / system
-            applyTelegramTheme(window.Telegram?.WebApp?.themeParams || {});
-            $('userInfo').textContent = 'Работа вне Telegram (режим отладки)';
-        }
-    } catch(e){
-        console.warn('Telegram init error', e);
-    }
-
-    // начальная загрузка ленты
-    loadNews();
-}
-
-/* ========== Boot ========== */
-init();
-
-</script>
+  </script>
 </body>
 </html>

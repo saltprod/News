@@ -61,7 +61,6 @@
       <!-- Source selector (populated by JS) -->
       <div style="margin-top:10px;display:flex;gap:8px;align-items:center">
         <select id="sourceSelect" class="source-select" aria-label="Выбор источника"></select>
-        <button id="btnReloadSource" class="btn ghost" title="Загрузить выбранный источник">Загрузить</button>
       </div>
     </header>
     <main>
@@ -156,8 +155,7 @@
           fetchUrl = src.url; document.getElementById('inputFeed').value = fetchUrl; loadNews(src.url);
         }
       });
-      // reload button
-      const rb = document.getElementById('btnReloadSource'); if(rb){ rb.addEventListener('click', ()=>{ const id = sel.value; if(id){ loadNewsById(id); } else { loadNews(); } }); }
+  // selection change already triggers load; no top reload button present
     }
 
     // Load news by source id (modular entrypoint)

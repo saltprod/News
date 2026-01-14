@@ -80,10 +80,10 @@
       left: 0;
       right: 0;
       z-index: 60;
-      background: linear-gradient(180deg, rgba(8, 13, 25, 0.98), rgba(8, 13, 25, 0.86));
-      padding: 10px 18px 12px;
+      background: rgba(8, 13, 25, 0.32);
+      padding: env(safe-area-inset-top) 12px 6px;
       border-bottom: 1px solid var(--border);
-      backdrop-filter: blur(10px)
+      backdrop-filter: blur(14px)
     }
 
     main {
@@ -94,29 +94,23 @@
       overscroll-behavior: contain
     }
 
-    .header-top {
-      display: grid;
-      grid-template-columns: auto 1fr auto;
+    .header-controls {
+      display: flex;
       align-items: center;
-      gap: 8px
+      gap: 8px;
+      flex-wrap: nowrap
     }
 
     .header-title {
       text-align: center;
-      font-weight: 600;
-      color: #cbd2e3;
-      font-size: 15px;
+      font-weight: 500;
+      color: #b7c0d3;
+      font-size: 12px;
+      margin-top: 4px;
+      letter-spacing: 0.2px;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis
-    }
-
-    .header-info {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      flex-wrap: wrap;
-      margin-top: 8px
     }
 
     .title-row {
@@ -126,14 +120,35 @@
     }
 
     .icon-btn {
-      padding: 6px 10px;
-      font-size: 12px;
-      border-radius: 10px;
-      min-height: 32px
+      width: 30px;
+      height: 30px;
+      padding: 0;
+      font-size: 15px;
+      line-height: 30px;
+      border-radius: 12px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center
     }
-    .icon-only {
-      min-width: 32px;
-      padding: 6px 8px
+    .icon-btn.active {
+      background: rgba(var(--accent-rgb), 0.2);
+      border: 1px solid rgba(var(--accent-rgb), 0.35)
+    }
+
+    .source-select.compact {
+      min-width: 120px;
+      max-width: 160px;
+      height: 30px;
+      font-size: 12px;
+      padding: 0 24px 0 10px;
+      border-radius: 12px;
+      appearance: none;
+      background-image:
+        linear-gradient(45deg, transparent 50%, rgba(255, 255, 255, 0.5) 50%),
+        linear-gradient(135deg, rgba(255, 255, 255, 0.5) 50%, transparent 50%);
+      background-position: calc(100% - 14px) 12px, calc(100% - 9px) 12px;
+      background-size: 5px 5px, 5px 5px;
+      background-repeat: no-repeat
     }
 
     .menu-backdrop {
@@ -253,9 +268,7 @@
     }
 
     .stats {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap
+      display: none
     }
 
     .stat-pill {
@@ -617,7 +630,7 @@
       }
 
       header {
-        padding: 6px 8px 6px
+        padding: env(safe-area-inset-top) 8px 6px
       }
 
       .header-top {
@@ -667,11 +680,11 @@
         height: 14px
       }
 
-      .header-info {
-        gap: 8px
-      }
       .icon-btn {
-        min-height: 32px
+        width: 28px;
+        height: 28px;
+        font-size: 14px;
+        border-radius: 11px
       }
       .feed-advanced {
         padding: 8px
@@ -685,19 +698,17 @@
   <canvas id="snowCanvas"></canvas>
   <div class="app" id="app">
     <header>
-      <div class="header-top">
-        <button id="btnClose" class="btn ghost icon-btn icon-only" aria-label="Назад">←</button>
-        <div id="headerTitle" class="header-title">Новости</div>
-        <button id="btnMenu" class="btn ghost icon-btn icon-only" aria-label="Меню">⋯</button>
+      <div class="header-controls">
+        <button id="btnClose" class="btn ghost icon-btn" aria-label="Назад">←</button>
+        <select id="sourceSelect" class="source-select compact" aria-label="Выбор источника"></select>
+        <button id="btnFavFilter" class="btn ghost icon-btn" aria-pressed="false" aria-label="Избранные">⭐</button>
+        <button id="btnMenu" class="btn ghost icon-btn" aria-label="Меню">⋯</button>
       </div>
-      <div class="header-info">
-        <select id="sourceSelect" class="source-select" aria-label="Выбор источника"></select>
-        <button id="btnFavFilter" class="chip" aria-pressed="false">Только избранные</button>
-        <div class="stats">
-          <div id="statCount" class="stat-pill">0 новостей</div>
-          <div id="statSource" class="stat-pill">Источник: -</div>
-          <div id="statusPill" class="status-pill">Загрузка...</div>
-        </div>
+      <div id="headerTitle" class="header-title">Новости</div>
+      <div class="stats">
+        <div id="statCount" class="stat-pill">0 новостей</div>
+        <div id="statSource" class="stat-pill">Источник: -</div>
+        <div id="statusPill" class="status-pill">Загрузка...</div>
       </div>
     </header>
     <main>

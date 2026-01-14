@@ -517,7 +517,7 @@
       border-radius: 16px;
       max-width: 820px;
       width: 94%;
-      max-height: calc(var(--app-h) - var(--safe-top) - var(--safe-bottom) - 16px);
+      max-height: calc(var(--app-h) * 0.92);
       box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
       color: var(--text);
       position: relative;
@@ -540,8 +540,14 @@
     .modal-body {
       overflow: auto;
       -webkit-overflow-scrolling: touch;
-      max-height: calc(var(--app-h) - var(--safe-top) - var(--safe-bottom) - 140px);
+      max-height: calc(var(--app-h) * 0.92 - 120px);
       overscroll-behavior: contain
+    }
+    .detail-text {
+      white-space: pre-wrap;
+      overflow: auto;
+      display: block;
+      line-height: 1.45
     }
 
     .modal-actions {
@@ -1216,6 +1222,8 @@
     // Modal
     let tgBackHandler = null;
     let tgMainHandler = null;
+    let currentTranslateController = null;
+    let currentTranslateKey = null;
     function setTelegramBackButton(visible) {
       const tg = window.Telegram && Telegram.WebApp ? Telegram.WebApp : null;
       if (!tg || !tg.BackButton) return;
@@ -1248,12 +1256,17 @@
     let currentDetailItems = [];
     let currentDetailIndex = 0;
     function openDetail(it, index = 0, items = null) {
+      if (currentTranslateController) {
+        try { currentTranslateController.abort(); } catch (e) { }
+      }
+      currentTranslateController = null;
+      currentTranslateKey = null;
       currentDetailItems = Array.isArray(items) ? items : getFilteredNews().slice(0, displayedCount);
       currentDetailIndex = Math.max(0, Math.min(index, currentDetailItems.length - 1));
       const root = $('#modalRoot'); root.style.display = 'flex'; root.innerHTML = '';
       const back = document.createElement('div'); back.className = 'modal-backdrop';
       const modal = document.createElement('div'); modal.className = 'modal';
-      modal.innerHTML = `<button class="close">✖</button><div class="modal-body"><h3 id="modalTitle"></h3><div style="color:var(--muted);font-size:12px;margin-top:6px" id="modalMeta"></div><div style="color:var(--muted);font-size:13px;margin-top:8px" id="modalSummary"></div><div id="translatedBlock" class="translate-output" style="display:none"></div></div><div class="modal-actions"><button id="btnPrev" class="btn ghost small">◀︎</button><button id="btnNext" class="btn ghost small">▶︎</button><button id="btnTranslate" class="btn compact tg-hide">🌐 Перевести</button><select id="translateLang" class="lang-select compact" aria-label="Язык перевода"><option value="ru">RU</option><option value="en">EN</option></select><button id="openLink" class="btn ghost compact tg-hide open-link-btn" type="button">Открыть</button></div>`;
+      modal.innerHTML = `<button class="close">✖</button><div class="modal-body"><h3 id="modalTitle"></h3><div style="color:var(--muted);font-size:12px;margin-top:6px" id="modalMeta"></div><div id="modalSummary" class="detail-text" style="color:var(--muted);font-size:13px;margin-top:8px"></div><div id="translatedBlock" class="translate-output" style="display:none"></div></div><div class="modal-actions"><button id="btnPrev" class="btn ghost small">◀︎</button><button id="btnNext" class="btn ghost small">▶︎</button><button id="btnTranslate" class="btn compact tg-hide">🌐 Перевести</button><select id="translateLang" class="lang-select compact" aria-label="Язык перевода"><option value="ru">RU</option><option value="en">EN</option></select><button id="openLink" class="btn ghost compact tg-hide open-link-btn" type="button">Открыть</button></div>`;
       back.appendChild(modal); root.appendChild(back);
       back.addEventListener('click', (e) => { if (e.target === back) closeDetail(); });
       modal.querySelector('.close').addEventListener('click', closeDetail);
@@ -1289,6 +1302,7 @@
         if (metaEl) metaEl.textContent = `${item.source || ''}${timeLabel ? ' · ' + timeLabel : ''}`;
         currentText = extractDetailText(item);
         if (!currentText) currentText = (item.title || '').trim();
+        if (currentText.length < 60) currentText = 'Текст в RSS недоступен. Откройте источник.';
         if (summaryEl) summaryEl.textContent = currentText;
         if (openLink) { openLink.textContent = 'Открыть источник'; }
         if (translatedBlock) { translatedBlock.style.display = 'none'; translatedBlock.textContent = ''; }
@@ -1336,47 +1350,65 @@
           updateMainButton();
         });
       }
+      async function translateForCurrentDetail(auto = false) {
+        const target = (langSel && langSel.value) ? langSel.value : 'ru';
+        if (!target || target === 'original') return;
+        const text = currentText || '';
+        if (!text) return;
+        const key = `${currentDetailItems[currentDetailIndex].id}|${target}`;
+        if (currentTranslateController) {
+          try { currentTranslateController.abort(); } catch (e) { }
+        }
+        currentTranslateController = new AbortController();
+        currentTranslateKey = key;
+        const cached = translations[key];
+        if (cached) {
+          translatedBlock.style.display = 'block';
+          translatedBlock.innerHTML = escapeHtml(cached);
+          translateBtn.textContent = 'Готово';
+          translateBtn.disabled = true;
+          setTimeout(() => { translateBtn.textContent = '🌐 Перевести'; translateBtn.disabled = false; }, 1200);
+          mainAction = 'open';
+          updateMainButton();
+          return;
+        }
+        translatedBlock.style.display = 'block';
+        translatedBlock.innerHTML = escapeHtml('Перевожу...');
+        translateBtn.textContent = 'Перевод...';
+        translateBtn.disabled = true;
+        try {
+          const translated = await translateText(text, target, currentTranslateController.signal);
+          if (currentTranslateKey !== key) return;
+          translations[key] = translated;
+          localStorage.setItem(LS_TRANSLATIONS, JSON.stringify(translations));
+          translatedBlock.style.display = 'block';
+          translatedBlock.innerHTML = escapeHtml(translated || '');
+          translateBtn.textContent = 'Готово';
+          setTimeout(() => { translateBtn.textContent = '🌐 Перевести'; translateBtn.disabled = false; }, 1200);
+          mainAction = 'open';
+          updateMainButton();
+        } catch (err) {
+          if (err && err.name === 'AbortError') return;
+          console.error('translate failed', err);
+          translatedBlock.style.display = 'block';
+          translatedBlock.innerHTML = escapeHtml('Перевод недоступен');
+          translateBtn.textContent = 'Ошибка перевода';
+          setTimeout(() => { translateBtn.textContent = '🌐 Перевести'; translateBtn.disabled = false; }, 1500);
+          mainAction = 'translate';
+          updateMainButton();
+        }
+      }
       if (translateBtn && translatedBlock) {
         translateBtn.addEventListener('click', async () => {
-          const target = (langSel && langSel.value) ? langSel.value : 'ru';
-          const text = currentText || '';
-          if (!text) return;
-          const key = `${currentDetailItems[currentDetailIndex].id}|${target}`;
-          const cached = translations[key];
-          if (cached) {
-            translatedBlock.style.display = 'block';
-            translatedBlock.innerHTML = escapeHtml(cached);
-            translateBtn.textContent = 'Готово';
-            translateBtn.disabled = true;
-            setTimeout(() => { translateBtn.textContent = '🌐 Перевести'; translateBtn.disabled = false; }, 1200);
-            mainAction = 'open';
-            updateMainButton();
-            return;
-          }
-          translateBtn.textContent = 'Перевод...';
-          translateBtn.disabled = true;
-          try {
-            const translated = await translateText(text, target);
-            translations[key] = translated;
-            localStorage.setItem(LS_TRANSLATIONS, JSON.stringify(translations));
-            translatedBlock.style.display = 'block';
-            translatedBlock.innerHTML = escapeHtml(translated || '');
-            translateBtn.textContent = 'Готово';
-            setTimeout(() => { translateBtn.textContent = '🌐 Перевести'; translateBtn.disabled = false; }, 1200);
-            mainAction = 'open';
-            updateMainButton();
-          } catch (err) {
-            console.error('translate failed', err);
-            translatedBlock.style.display = 'block';
-            translatedBlock.innerHTML = escapeHtml('Перевод временно недоступен');
-            translateBtn.textContent = 'Ошибка перевода';
-            setTimeout(() => { translateBtn.textContent = '🌐 Перевести'; translateBtn.disabled = false; }, 1500);
-            mainAction = 'translate';
-            updateMainButton();
-          }
+          await translateForCurrentDetail(false);
         });
       }
       applyDetail(currentDetailItems[currentDetailIndex] || it);
+      const targetLang = (langSel && langSel.value) ? langSel.value : 'ru';
+      const autoKey = `${currentDetailItems[currentDetailIndex].id}|${targetLang}`;
+      if (targetLang !== 'original' && !translations[autoKey]) {
+        translateForCurrentDetail(true);
+      }
     }
     function closeDetail() {
       const root = $('#modalRoot'); root.style.display = 'none'; root.innerHTML = '';
@@ -1391,11 +1423,12 @@
     // Fav
     function toggleFav(id) { if (favs.has(id)) { favs.delete(id); } else { favs.add(id); } saveFavs(); }
 
-    async function translateText(text, target = 'ru') {
+    async function translateText(text, target = 'ru', signal) {
       const res = await fetch(TRANSLATE_ENDPOINT, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ q: text, target })
+        body: JSON.stringify({ q: text, target }),
+        signal
       });
       if (!res.ok) {
         const msg = await res.text().catch(() => '');
@@ -1417,7 +1450,7 @@
     function stripTags(s) { return (s || '').replace(/<[^>]*>/g, ' '); }
     function normalizeSpaces(s) { return (s || '').replace(/\s+/g, ' ').trim(); }
     function extractDetailText(it) {
-      const raw = (it.summary || it.content || it.description || '') + '';
+      const raw = (it.content || it.summary || it.description || '') + '';
       const decoded = decodeEntities(raw);
       const stripped = stripTags(decoded);
       return normalizeSpaces(stripped);

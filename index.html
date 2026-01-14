@@ -11,6 +11,7 @@
       --surface: #0e1730;
       --surface-2: #101c38;
       --text: #eef2ff;
+      --secondary: #101c38;
       --muted: #9fb0d0;
       --accent: #ff8a3d;
       --accent-2: #4cc9f0;
@@ -56,7 +57,9 @@
       bottom: 0;
       z-index: 0;
       pointer-events: none;
-      opacity: 0.15
+      opacity: 0.15;
+      transform: translate3d(var(--tilt-x, 0px), var(--tilt-y, 0px), 0);
+      transition: transform 0.15s ease-out
     }
 
     body.bg-on canvas#snowCanvas {
@@ -109,7 +112,7 @@
 
     .hdrRow {
       display: grid;
-      grid-template-columns: 30px 1fr 30px 30px;
+      grid-template-columns: 1fr 30px 30px;
       align-items: center;
       column-gap: 10px;
       width: 100%;
@@ -257,6 +260,9 @@
 
     .source-item.active {
       background: rgba(255, 255, 255, 0.08)
+    }
+    .tg-webapp .modal-actions .tg-hide {
+      display: none
     }
 
     h1 {
@@ -795,7 +801,6 @@
   <div class="app" id="app">
     <header>
       <div class="hdrRow">
-        <button id="btnClose" class="btn ghost iconBtn" aria-label="Назад">←</button>
         <button id="sourceBtn" class="source-btn" aria-haspopup="true" aria-expanded="false">Источник: ...</button>
         <button id="btnFavFilter" class="btn ghost iconBtn" aria-pressed="false" aria-label="Избранные">⭐</button>
         <button id="btnMenu" class="btn ghost iconBtn" aria-label="Меню">⋯</button>
@@ -927,16 +932,10 @@
         menu.appendChild(item);
       });
     }
-    function openSourceMenu() {
+    function positionSourceMenu() {
       const btn = document.getElementById('sourceBtn');
       const menu = document.getElementById('sourceMenu');
-      const backdrop = document.getElementById('sourceMenuBackdrop');
-      if (!btn || !menu || !backdrop) return;
-      const isOpen = menu.style.display === 'block';
-      if (isOpen) { closeSourceMenu(); return; }
-      menu.style.display = 'block';
-      menu.setAttribute('aria-hidden', 'false');
-      backdrop.style.display = 'block';
+      if (!btn || !menu) return;
       const rect = btn.getBoundingClientRect();
       const pad = 8;
       const maxH = Math.min(window.innerHeight * 0.55, 420);
@@ -949,6 +948,18 @@
       if (top < pad) top = pad;
       menu.style.left = `${left}px`;
       menu.style.top = `${top}px`;
+    }
+    function openSourceMenu() {
+      const btn = document.getElementById('sourceBtn');
+      const menu = document.getElementById('sourceMenu');
+      const backdrop = document.getElementById('sourceMenuBackdrop');
+      if (!btn || !menu || !backdrop) return;
+      const isOpen = menu.style.display === 'block';
+      if (isOpen) { closeSourceMenu(); return; }
+      menu.style.display = 'block';
+      menu.setAttribute('aria-hidden', 'false');
+      backdrop.style.display = 'block';
+      positionSourceMenu();
       const saved = localStorage.getItem(LS_SRC);
       updateSourceMenuActive(saved);
       btn.setAttribute('aria-expanded', 'true');
@@ -1113,6 +1124,20 @@
       }
     }
 
+    function openExternalLink(url) {
+      if (!url) return;
+      const tg = window.Telegram && Telegram.WebApp ? Telegram.WebApp : null;
+      const isTelegram = /^tg:/.test(url) || /\/\/t\.me\//i.test(url);
+      if (tg && isTelegram && typeof tg.openTelegramLink === 'function') {
+        tg.openTelegramLink(url);
+        return;
+      }
+      if (tg && typeof tg.openLink === 'function') {
+        tg.openLink(url, { try_instant_view: true });
+        return;
+      }
+      window.open(url, '_blank');
+    }
     // Render
     function normalizeText(s) { return (s || '').toLowerCase(); }
     function getFilteredNews() {
@@ -1176,7 +1201,7 @@
         const favBtn = node.querySelector('.btnFav');
         favBtn.textContent = favs.has(it.id) ? '★' : '☆';
         favBtn.addEventListener('click', (ev) => { ev.stopPropagation(); toggleFav(it.id); favBtn.textContent = favs.has(it.id) ? '★' : '☆'; renderNews(); });
-        node.addEventListener('click', (ev) => { if (ev.ctrlKey || ev.metaKey) { window.open(it.link, '_blank'); } else openDetail(it, idx, list); });
+        node.addEventListener('click', (ev) => { if (ev.ctrlKey || ev.metaKey) { openExternalLink(it.link); } else openDetail(it, idx, list); });
         frag.appendChild(node);
       });
       root.appendChild(frag);
@@ -1191,6 +1216,37 @@
     }
 
     // Modal
+    let tgBackHandler = null;
+    let tgMainHandler = null;
+    function setTelegramBackButton(visible) {
+      const tg = window.Telegram && Telegram.WebApp ? Telegram.WebApp : null;
+      if (!tg || !tg.BackButton) return;
+      if (visible) {
+        if (tgBackHandler && typeof tg.BackButton.offClick === 'function') tg.BackButton.offClick(tgBackHandler);
+        tgBackHandler = () => closeDetail();
+        if (typeof tg.BackButton.onClick === 'function') tg.BackButton.onClick(tgBackHandler);
+        if (typeof tg.BackButton.show === 'function') tg.BackButton.show();
+      } else {
+        if (tgBackHandler && typeof tg.BackButton.offClick === 'function') tg.BackButton.offClick(tgBackHandler);
+        if (typeof tg.BackButton.hide === 'function') tg.BackButton.hide();
+      }
+    }
+    function setTelegramMainButton(text, handler) {
+      const tg = window.Telegram && Telegram.WebApp ? Telegram.WebApp : null;
+      if (!tg || !tg.MainButton) return false;
+      if (tgMainHandler && typeof tg.MainButton.offClick === 'function') tg.MainButton.offClick(tgMainHandler);
+      tgMainHandler = handler;
+      if (typeof tg.MainButton.setText === 'function') tg.MainButton.setText(text);
+      if (typeof tg.MainButton.onClick === 'function') tg.MainButton.onClick(tgMainHandler);
+      if (typeof tg.MainButton.show === 'function') tg.MainButton.show();
+      return true;
+    }
+    function hideTelegramMainButton() {
+      const tg = window.Telegram && Telegram.WebApp ? Telegram.WebApp : null;
+      if (!tg || !tg.MainButton) return;
+      if (tgMainHandler && typeof tg.MainButton.offClick === 'function') tg.MainButton.offClick(tgMainHandler);
+      if (typeof tg.MainButton.hide === 'function') tg.MainButton.hide();
+    }
     let currentDetailItems = [];
     let currentDetailIndex = 0;
     function openDetail(it, index = 0, items = null) {
@@ -1199,7 +1255,7 @@
       const root = $('#modalRoot'); root.style.display = 'flex'; root.innerHTML = '';
       const back = document.createElement('div'); back.className = 'modal-backdrop';
       const modal = document.createElement('div'); modal.className = 'modal';
-      modal.innerHTML = `<button class="close">✖</button><div class="modal-body"><h3 id="modalTitle"></h3><div style="color:var(--muted);font-size:12px;margin-top:6px" id="modalMeta"></div><div style="color:var(--muted);font-size:13px;margin-top:8px" id="modalSummary"></div><div id="translatedBlock" class="translate-output" style="display:none"></div></div><div class="modal-actions"><button id="btnPrev" class="btn ghost small">◀︎</button><button id="btnNext" class="btn ghost small">▶︎</button><button id="btnTranslate" class="btn compact">🌐 Перевести</button><select id="translateLang" class="lang-select compact" aria-label="Язык перевода"><option value="ru">RU</option><option value="en">EN</option></select><a id="openLink" class="btn ghost compact" target="_blank">Открыть</a></div>`;
+      modal.innerHTML = `<button class="close">✖</button><div class="modal-body"><h3 id="modalTitle"></h3><div style="color:var(--muted);font-size:12px;margin-top:6px" id="modalMeta"></div><div style="color:var(--muted);font-size:13px;margin-top:8px" id="modalSummary"></div><div id="translatedBlock" class="translate-output" style="display:none"></div></div><div class="modal-actions"><button id="btnPrev" class="btn ghost small">◀︎</button><button id="btnNext" class="btn ghost small">▶︎</button><button id="btnTranslate" class="btn compact tg-hide">🌐 Перевести</button><select id="translateLang" class="lang-select compact" aria-label="Язык перевода"><option value="ru">RU</option><option value="en">EN</option></select><button id="openLink" class="btn ghost compact tg-hide open-link-btn" type="button">Открыть</button></div>`;
       back.appendChild(modal); root.appendChild(back);
       back.addEventListener('click', (e) => { if (e.target === back) closeDetail(); });
       modal.querySelector('.close').addEventListener('click', closeDetail);
@@ -1213,9 +1269,21 @@
       const prevBtn = modal.querySelector('#btnPrev');
       const nextBtn = modal.querySelector('#btnNext');
       let currentText = '';
+      let mainAction = 'translate';
+      const tg = window.Telegram && Telegram.WebApp ? Telegram.WebApp : null;
+      if (tg && typeof tg.expand === 'function') tg.expand();
+      setTelegramBackButton(true);
       function updateNavButtons() {
         if (prevBtn) prevBtn.disabled = currentDetailIndex <= 0;
         if (nextBtn) nextBtn.disabled = currentDetailIndex >= currentDetailItems.length - 1;
+      }
+      function updateMainButton() {
+        if (!tg || !tg.MainButton) return;
+        const label = mainAction === 'open' ? 'Открыть источник' : 'Перевести';
+        setTelegramMainButton(label, () => {
+          if (mainAction === 'open') openExternalLink(currentDetailItems[currentDetailIndex].link);
+          else if (translateBtn) translateBtn.click();
+        });
       }
       function applyDetail(item) {
         const timeLabel = formatTime(item.date);
@@ -1224,9 +1292,11 @@
         currentText = extractDetailText(item);
         if (!currentText) currentText = (item.title || '').trim();
         if (summaryEl) summaryEl.textContent = currentText;
-        if (openLink) { openLink.href = item.link || '#'; openLink.textContent = 'Открыть источник'; }
+        if (openLink) { openLink.textContent = 'Открыть источник'; }
         if (translatedBlock) { translatedBlock.style.display = 'none'; translatedBlock.textContent = ''; }
         if (translateBtn) { translateBtn.textContent = '🌐 Перевести'; translateBtn.disabled = false; }
+        mainAction = currentText ? 'translate' : 'open';
+        updateMainButton();
         updateNavButtons();
       }
       function goToIndex(nextIndex) {
@@ -1257,6 +1327,17 @@
           }
         }, { passive: true });
       }
+      if (openLink) {
+        openLink.addEventListener('click', () => {
+          openExternalLink(currentDetailItems[currentDetailIndex].link);
+        });
+      }
+      if (langSel) {
+        langSel.addEventListener('change', () => {
+          mainAction = 'translate';
+          updateMainButton();
+        });
+      }
       if (translateBtn && translatedBlock) {
         translateBtn.addEventListener('click', async () => {
           const target = (langSel && langSel.value) ? langSel.value : 'ru';
@@ -1270,6 +1351,8 @@
             translateBtn.textContent = 'Готово';
             translateBtn.disabled = true;
             setTimeout(() => { translateBtn.textContent = '🌐 Перевести'; translateBtn.disabled = false; }, 1200);
+            mainAction = 'open';
+            updateMainButton();
             return;
           }
           translateBtn.textContent = 'Перевод...';
@@ -1282,18 +1365,26 @@
             translatedBlock.innerHTML = escapeHtml(translated || '');
             translateBtn.textContent = 'Готово';
             setTimeout(() => { translateBtn.textContent = '🌐 Перевести'; translateBtn.disabled = false; }, 1200);
+            mainAction = 'open';
+            updateMainButton();
           } catch (err) {
             console.error('translate failed', err);
             translatedBlock.style.display = 'block';
             translatedBlock.innerHTML = escapeHtml('Перевод временно недоступен');
             translateBtn.textContent = 'Ошибка перевода';
             setTimeout(() => { translateBtn.textContent = '🌐 Перевести'; translateBtn.disabled = false; }, 1500);
+            mainAction = 'translate';
+            updateMainButton();
           }
         });
       }
       applyDetail(currentDetailItems[currentDetailIndex] || it);
     }
-    function closeDetail() { const root = $('#modalRoot'); root.style.display = 'none'; root.innerHTML = ''; }
+    function closeDetail() {
+      const root = $('#modalRoot'); root.style.display = 'none'; root.innerHTML = '';
+      setTelegramBackButton(false);
+      hideTelegramMainButton();
+    }
 
     // Translation cache
     let translations = {};
@@ -1429,17 +1520,19 @@
 
     // Theme & UI init
     function applyTheme() { const saved = localStorage.getItem(LS_THEME); if (saved === 'dark') { document.documentElement.style.setProperty('--bg', '#071022'); } else if (saved === 'light') { document.documentElement.style.setProperty('--bg', '#f6f7fb'); document.documentElement.style.setProperty('--text', '#071022'); } }
+    function applyTelegramTheme() {
+      const tg = window.Telegram && Telegram.WebApp ? Telegram.WebApp : null;
+      if (!tg || !tg.themeParams) return;
+      const p = tg.themeParams;
+      if (p.bg_color) document.documentElement.style.setProperty('--bg', p.bg_color);
+      if (p.text_color) document.documentElement.style.setProperty('--text', p.text_color);
+      if (p.button_color) document.documentElement.style.setProperty('--accent', p.button_color);
+      if (p.secondary_bg_color) document.documentElement.style.setProperty('--secondary', p.secondary_bg_color);
+    }
 
     // Bind UI
     document.getElementById('btnLoad').addEventListener('click', () => { const v = document.getElementById('inputFeed').value.trim(); if (v) { fetchUrl = v; loadNews(fetchUrl); } else loadNews(); });
-    const themeBtn = document.getElementById('btnToggleTheme'); if (themeBtn) themeBtn.addEventListener('click', () => { const cur = localStorage.getItem(LS_THEME); const next = cur === 'dark' ? 'light' : 'dark'; localStorage.setItem(LS_THEME, next); applyTheme(); });
     const bgToggleBtn = document.getElementById('bgToggle'); if (bgToggleBtn) bgToggleBtn.addEventListener('click', () => { const cur = localStorage.getItem(LS_BG) === '1'; localStorage.setItem(LS_BG, cur ? '0' : '1'); updateBgToggle(); });
-    const closeBtn = document.getElementById('btnClose');
-    if (closeBtn) closeBtn.addEventListener('click', () => {
-      if (window.Telegram && Telegram.WebApp && typeof Telegram.WebApp.close === 'function') {
-        Telegram.WebApp.close();
-      }
-    });
     const favFilterBtn = document.getElementById('btnFavFilter');
     if (favFilterBtn) favFilterBtn.addEventListener('click', () => {
       favFilterOn = !favFilterOn;
@@ -1465,6 +1558,49 @@
       if (label) label.textContent = on ? 'Фон: Вкл' : 'Фон: Выкл';
       document.body.classList.toggle('bg-on', on);
       if (on) startSnow(); else stopSnow();
+    }
+    let lastLocation = null;
+    function onLocationAvailable(loc) {
+      // hook for future proximity-based ranking
+    }
+    function initLocation() {
+      const tg = window.Telegram && Telegram.WebApp ? Telegram.WebApp : null;
+      const lm = tg && tg.LocationManager ? tg.LocationManager : null;
+      if (!lm) return;
+      try {
+        const saveLoc = (loc) => {
+          if (!loc) return;
+          lastLocation = loc;
+          try { localStorage.setItem('tg_last_location', JSON.stringify(loc)); } catch (e) { }
+          onLocationAvailable(loc);
+        };
+        if (typeof lm.requestPermission === 'function') {
+          const res = lm.requestPermission();
+          if (res && typeof res.then === 'function') {
+            res.then((granted) => {
+              if (!granted) return;
+              if (typeof lm.getLocation === 'function') {
+                const r = lm.getLocation();
+                if (r && typeof r.then === 'function') r.then(saveLoc);
+              }
+            }).catch(() => { });
+          }
+        } else if (typeof lm.getLocation === 'function') {
+          const r = lm.getLocation();
+          if (r && typeof r.then === 'function') r.then(saveLoc);
+        }
+      } catch (e) { }
+    }
+    function initOrientation() {
+      if (!('DeviceOrientationEvent' in window)) return;
+      window.addEventListener('deviceorientation', (e) => {
+        const gamma = typeof e.gamma === 'number' ? e.gamma : 0;
+        const beta = typeof e.beta === 'number' ? e.beta : 0;
+        const tx = Math.max(-6, Math.min(6, gamma / 6));
+        const ty = Math.max(-6, Math.min(6, beta / 9));
+        document.documentElement.style.setProperty('--tilt-x', `${tx}px`);
+        document.documentElement.style.setProperty('--tilt-y', `${ty}px`);
+      }, { passive: true });
     }
     function updateAdvancedVisibility() {
       const adv = document.getElementById('feedAdvanced');
@@ -1535,6 +1671,8 @@
       updateLayoutHeights();
       updateAdvancedVisibility();
       if (menuPopover && menuPopover.style.display === 'block') positionMenu();
+      const sourceMenu = document.getElementById('sourceMenu');
+      if (sourceMenu && sourceMenu.style.display === 'block') positionSourceMenu();
     }
     window.addEventListener('resize', handleViewportChange);
     window.addEventListener('orientationchange', handleViewportChange);
@@ -1547,7 +1685,12 @@
         Telegram.WebApp.onEvent('viewportChanged', handleViewportChange);
       }
       updateLayoutHeights();
-      applyTheme();
+      const tg = window.Telegram && Telegram.WebApp ? Telegram.WebApp : null;
+      if (tg && typeof tg.expand === 'function') tg.expand();
+      if (tg && typeof tg.onEvent === 'function') tg.onEvent('themeChanged', applyTelegramTheme);
+      if (tg) applyTelegramTheme(); else applyTheme();
+      initLocation();
+      initOrientation();
       // populate source selector and restore selection
       try { loadSources(); } catch (e) { console.warn('loadSources failed', e); }
       // restore cached data

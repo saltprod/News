@@ -80,7 +80,7 @@
       right: 0;
       z-index: 60;
       background: linear-gradient(180deg, rgba(8, 13, 25, 0.98), rgba(8, 13, 25, 0.86));
-      padding: calc(14px + var(--safe-top)) 18px 12px;
+      padding: calc(10px + var(--safe-top)) 18px 12px;
       border-bottom: 1px solid var(--border);
       backdrop-filter: blur(10px)
     }
@@ -93,11 +93,65 @@
       overscroll-behavior: contain
     }
 
-    .title-row {
+    .header-top {
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 12px
+    }
+
+    .header-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 8px
+    }
+
+    .title-row {
+      display: flex;
+      align-items: center;
+      gap: 12px
+    }
+
+    .icon-btn {
+      padding: 6px 10px;
+      font-size: 12px;
+      border-radius: 10px;
+      min-height: 32px
+    }
+
+    .menu-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.32);
+      z-index: 80;
+      display: none
+    }
+
+    .menu-popover {
+      position: fixed;
+      z-index: 90;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px;
+      min-width: 200px;
+      box-shadow: var(--shadow);
+      display: none
+    }
+
+    .menu-popover .menu-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 6px 4px
+    }
+
+    .menu-popover .menu-label {
+      font-size: 12px;
+      color: var(--muted)
     }
 
     h1 {
@@ -186,7 +240,6 @@
     .stats {
       display: flex;
       gap: 10px;
-      margin-top: 10px;
       flex-wrap: wrap
     }
 
@@ -462,47 +515,26 @@
       gap: 8px;
       align-items: center
     }
-    .settings-panel {
-      margin-top: 16px;
+    .feed-advanced {
+      margin-top: 12px;
       background: var(--surface-2);
       border: 1px solid var(--border);
       border-radius: var(--radius);
-      padding: 12px;
+      padding: 10px;
       box-shadow: var(--shadow);
-      display: none
-    }
-    .settings-panel.show {
-      display: block
-    }
-    .settings-head {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 10px
-    }
-    .settings-title {
-      font-size: 12px;
-      letter-spacing: 0.4px;
-      text-transform: uppercase;
-      color: var(--muted)
-    }
-    .settings-row {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 10px
-    }
-    .settings-panel .input,
-    .settings-panel .btn {
-      min-height: 36px;
-      font-size: 12px;
-      padding: 6px 10px
-    }
-    .feed-advanced {
-      display: flex;
+      display: none;
       gap: 8px;
       align-items: center;
       flex-wrap: wrap
+    }
+    .feed-advanced.show {
+      display: flex
+    }
+    .feed-advanced .input,
+    .feed-advanced .btn {
+      min-height: 36px;
+      font-size: 12px;
+      padding: 6px 10px
     }
 
     .skeleton {
@@ -544,19 +576,6 @@
         --header-h: 188px
       }
 
-      .title-row {
-        flex-direction: column;
-        align-items: flex-start
-      }
-
-      .toolbar {
-        align-items: stretch
-      }
-
-      .search-wrap {
-        flex-direction: column
-      }
-
       .bottom-bar {
         padding: 8px
       }
@@ -571,8 +590,7 @@
         padding: calc(6px + var(--safe-top)) 8px 6px
       }
 
-      .title-row {
-        flex-direction: row;
+      .header-top {
         align-items: center
       }
 
@@ -586,8 +604,7 @@
       }
 
       .stats {
-        gap: 6px;
-        margin-top: 6px
+        gap: 6px
       }
 
       .stat-pill,
@@ -620,23 +637,14 @@
         height: 14px
       }
 
-      .toolbar,
-      .search-wrap {
-        gap: 10px
+      .header-info {
+        gap: 8px
       }
-
-      .panel .feed-row {
-        gap: 10px
+      .icon-btn {
+        min-height: 32px
       }
-      .settings-panel {
-        padding: 10px
-      }
-      .settings-row {
-        min-height: 44px
-      }
-      .settings-panel .input,
-      .settings-panel .btn {
-        min-height: 36px
+      .feed-advanced {
+        padding: 8px
       }
 
     }
@@ -647,45 +655,36 @@
   <canvas id="snowCanvas"></canvas>
   <div class="app" id="app">
     <header>
-      <div class="title-row">
-        <div class="brand">
+      <div class="header-top">
+        <button id="btnClose" class="btn ghost icon-btn">Закрыть</button>
+        <button id="btnMenu" class="btn ghost icon-btn" aria-label="Меню">⋯</button>
+      </div>
+      <div class="header-info">
+        <div class="title-row">
           <div class="logo">N</div>
           <h1>Моя лента</h1>
         </div>
-        <div class="title-actions">
-          <select id="sourceSelect" class="source-select" aria-label="Выбор источника"></select>
-          <button id="btnFavFilter" class="chip" aria-pressed="false">Только избранные</button>
+        <select id="sourceSelect" class="source-select" aria-label="Выбор источника"></select>
+        <button id="btnFavFilter" class="chip" aria-pressed="false">Только избранные</button>
+        <div class="stats">
+          <div id="statCount" class="stat-pill">0 новостей</div>
+          <div id="statSource" class="stat-pill">Источник: -</div>
+          <div id="statusPill" class="status-pill">Загрузка...</div>
         </div>
       </div>
     </header>
     <main>
-      <div class="stats">
-        <div id="statCount" class="stat-pill">0 новостей</div>
-        <div id="statSource" class="stat-pill">Источник: —</div>
-        <div id="statusPill" class="status-pill">Загрузка...</div>
+      <div id="feedAdvanced" class="feed-advanced">
+        <input id="inputFeed" class="input"
+          placeholder="rss:https://example.com/feed.xml или https://api.example.com/news.json" />
+        <button id="btnLoad" class="btn">Загрузить</button>
       </div>
       <div id="news" class="news-list"></div>
       <div id="emptyState" class="empty" style="display:none">Пока ничего нет. Попробуйте выбрать другой источник или изменить поиск.</div>
-      <div id="settingsPanel" class="settings-panel">
-        <div class="settings-head">
-          <div class="settings-title">Настройки</div>
-          <button id="btnCloseSettings" class="btn ghost">✕</button>
-        </div>
-        <div class="settings-row">
-          <span id="bgLabel" class="badge">Фон: Выкл</span>
-          <button id="bgToggle" class="toggle" aria-label="Анимация фона"><span class="dot"></span></button>
-        </div>
-        <div id="feedAdvanced" class="feed-advanced">
-          <input id="inputFeed" class="input"
-            placeholder="rss:https://example.com/feed.xml или https://api.example.com/news.json" />
-          <button id="btnLoad" class="btn">Загрузить</button>
-        </div>
-      </div>
     </main>
 
     <div class="bottom-bar">
       <button id="btnLoadMore" class="btn">Загрузить еще</button>
-      <button id="btnSettings" class="btn ghost" aria-label="Настройки">⚙︎</button>
     </div>
   </div>
 
@@ -707,6 +706,17 @@
   </template>
 
   <div id="modalRoot" style="display:none"></div>
+  <div id="menuBackdrop" class="menu-backdrop"></div>
+  <div id="menuPopover" class="menu-popover" role="menu" aria-hidden="true">
+    <div class="menu-row">
+      <span id="bgLabel" class="badge">Фон: Выкл</span>
+      <button id="bgToggle" class="toggle" aria-label="Анимация фона"><span class="dot"></span></button>
+    </div>
+    <div class="menu-row">
+      <span class="menu-label">RSS строка</span>
+      <button id="btnToggleAdvanced" class="btn ghost small" aria-pressed="false">Скрыта</button>
+    </div>
+  </div>
 
   <script>
     // Minimal Telegram.WebApp shim for local testing
@@ -1154,6 +1164,12 @@
     document.getElementById('btnLoad').addEventListener('click', () => { const v = document.getElementById('inputFeed').value.trim(); if (v) { fetchUrl = v; loadNews(fetchUrl); } else loadNews(); });
     const themeBtn = document.getElementById('btnToggleTheme'); if (themeBtn) themeBtn.addEventListener('click', () => { const cur = localStorage.getItem(LS_THEME); const next = cur === 'dark' ? 'light' : 'dark'; localStorage.setItem(LS_THEME, next); applyTheme(); });
     const bgToggleBtn = document.getElementById('bgToggle'); if (bgToggleBtn) bgToggleBtn.addEventListener('click', () => { const cur = localStorage.getItem(LS_BG) === '1'; localStorage.setItem(LS_BG, cur ? '0' : '1'); updateBgToggle(); });
+    const closeBtn = document.getElementById('btnClose');
+    if (closeBtn) closeBtn.addEventListener('click', () => {
+      if (window.Telegram && Telegram.WebApp && typeof Telegram.WebApp.close === 'function') {
+        Telegram.WebApp.close();
+      }
+    });
     const favFilterBtn = document.getElementById('btnFavFilter');
     if (favFilterBtn) favFilterBtn.addEventListener('click', () => {
       favFilterOn = !favFilterOn;
@@ -1175,11 +1191,16 @@
       if (on) startSnow(); else stopSnow();
     }
     function updateAdvancedVisibility() {
-      const panel = document.getElementById('settingsPanel');
-      if (!panel) return;
+      const adv = document.getElementById('feedAdvanced');
+      const btn = document.getElementById('btnToggleAdvanced');
+      if (!adv) return;
       const isMobile = window.matchMedia('(max-width: 520px)').matches;
       const saved = localStorage.getItem(LS_UI_ADVANCED) === '1';
-      panel.classList.toggle('show', saved);
+      adv.classList.toggle('show', saved);
+      if (btn) {
+        btn.textContent = saved ? 'Показана' : 'Скрыта';
+        btn.setAttribute('aria-pressed', saved ? 'true' : 'false');
+      }
       updateMobileHeaderState(isMobile);
       updateLayoutHeights();
     }
@@ -1187,15 +1208,45 @@
       localStorage.setItem(LS_UI_ADVANCED, open ? '1' : '0');
       updateAdvancedVisibility();
     }
-    const settingsBtn = document.getElementById('btnSettings');
-    const settingsCloseBtn = document.getElementById('btnCloseSettings');
-    function toggleSettings() {
-      const panel = document.getElementById('settingsPanel');
-      const isOpen = panel && panel.classList.contains('show');
-      setAdvanced(!isOpen);
+    const menuBtn = document.getElementById('btnMenu');
+    const menuPopover = document.getElementById('menuPopover');
+    const menuBackdrop = document.getElementById('menuBackdrop');
+    function closeMenu() {
+      if (!menuPopover || !menuBackdrop) return;
+      menuPopover.style.display = 'none';
+      menuPopover.setAttribute('aria-hidden', 'true');
+      menuBackdrop.style.display = 'none';
     }
-    if (settingsBtn) settingsBtn.addEventListener('click', toggleSettings);
-    if (settingsCloseBtn) settingsCloseBtn.addEventListener('click', toggleSettings);
+    function positionMenu() {
+      if (!menuBtn || !menuPopover) return;
+      const rect = menuBtn.getBoundingClientRect();
+      const pad = 8;
+      const width = menuPopover.offsetWidth || 200;
+      let left = rect.right - width;
+      if (left < pad) left = pad;
+      let top = rect.bottom + pad;
+      if (top < pad) top = pad;
+      menuPopover.style.left = `${left}px`;
+      menuPopover.style.top = `${top}px`;
+    }
+    function toggleMenu() {
+      if (!menuPopover || !menuBackdrop) return;
+      const isOpen = menuPopover.style.display === 'block';
+      if (isOpen) { closeMenu(); return; }
+      menuPopover.style.display = 'block';
+      menuPopover.setAttribute('aria-hidden', 'false');
+      menuBackdrop.style.display = 'block';
+      positionMenu();
+    }
+    if (menuBtn) menuBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleMenu(); });
+    if (menuBackdrop) menuBackdrop.addEventListener('click', closeMenu);
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeMenu(); });
+    const advBtn = document.getElementById('btnToggleAdvanced');
+    if (advBtn) advBtn.addEventListener('click', () => {
+      const adv = document.getElementById('feedAdvanced');
+      const isOpen = adv && adv.classList.contains('show');
+      setAdvanced(!isOpen);
+    });
 
     function updateMobileHeaderState(isMobile) {
       const title = document.querySelector('h1');
@@ -1210,7 +1261,14 @@
     }
 
     // Boot
-    window.addEventListener('resize', () => { resizeSnowCanvas(); if (snowRunning) createSnow(); updateAppHeight(); updateLayoutHeights(); updateAdvancedVisibility(); });
+    window.addEventListener('resize', () => {
+      resizeSnowCanvas();
+      if (snowRunning) createSnow();
+      updateAppHeight();
+      updateLayoutHeights();
+      updateAdvancedVisibility();
+      if (menuPopover && menuPopover.style.display === 'block') positionMenu();
+    });
     window.addEventListener('load', () => {
       updateAppHeight();
       updateLayoutHeights();

@@ -22,8 +22,11 @@
       --shadow: 0 16px 40px rgba(2, 8, 20, 0.45);
       --header-h: 168px;
       --bottom-h: 64px;
-      --safe-top: env(safe-area-inset-top);
-      --safe-bottom: env(safe-area-inset-bottom);
+      --tg-safe-top: env(safe-area-inset-top);
+      --tg-safe-bottom: env(safe-area-inset-bottom);
+      --tg-topbar: 0px;
+      --safe-top: var(--tg-safe-top);
+      --safe-bottom: var(--tg-safe-bottom);
       --app-h: 100%;
     }
 
@@ -59,12 +62,25 @@
       opacity: 0.55
     }
 
+    #tgTopSpacer {
+      height: 0;
+      pointer-events: none
+    }
+
+    .tg-webapp #tgTopSpacer {
+      height: calc(var(--tg-safe-top) + var(--tg-topbar))
+    }
+
     .app {
       position: relative;
       z-index: 2;
       max-width: 1024px;
       margin: 0 auto;
       padding-bottom: 0
+    }
+
+    .tg-webapp .app {
+      min-height: calc(var(--app-h) - var(--tg-safe-top) - var(--tg-safe-bottom))
     }
 
     /* make header fixed so it stays visible in Telegram WebView */
@@ -79,6 +95,9 @@
       border-bottom: 1px solid var(--border);
       backdrop-filter: blur(10px)
     }
+    .tg-webapp header {
+      top: calc(var(--tg-safe-top) + var(--tg-topbar))
+    }
 
     main {
       height: calc(var(--app-h) - var(--header-h) - var(--bottom-h));
@@ -86,6 +105,9 @@
       padding: var(--header-h) 18px calc(16px + var(--safe-bottom));
       -webkit-overflow-scrolling: touch;
       overscroll-behavior: contain
+    }
+    .tg-webapp main {
+      height: calc(var(--app-h) - var(--tg-safe-top) - var(--tg-safe-bottom) - var(--header-h) - var(--bottom-h))
     }
 
     .header-top {
@@ -366,7 +388,7 @@
       bottom: 0;
       background: linear-gradient(180deg, rgba(12, 20, 40, 0.92), rgba(12, 20, 40, 0.98));
       padding: 10px 12px;
-      padding-bottom: calc(10px + var(--safe-bottom));
+      padding-bottom: calc(10px + var(--tg-safe-bottom));
       display: flex;
       justify-content: center;
       gap: 10px;
@@ -676,6 +698,7 @@
 </head>
 
 <body>
+  <div id="tgTopSpacer" aria-hidden="true"></div>
   <canvas id="snowCanvas"></canvas>
   <div class="app" id="app">
     <header>
@@ -1218,16 +1241,18 @@
     const DEBUG_LAYOUT = false;
     function updateViewportVars() {
       const tg = (window.Telegram && Telegram.WebApp) ? Telegram.WebApp : null;
-      const appH = tg && typeof tg.viewportStableHeight === 'number' && tg.viewportStableHeight > 0
+      const safeTop = (tg && tg.safeAreaInset && typeof tg.safeAreaInset.top === 'number') ? tg.safeAreaInset.top : 0;
+      const safeBottom = (tg && tg.safeAreaInset && typeof tg.safeAreaInset.bottom === 'number') ? tg.safeAreaInset.bottom : 0;
+      const viewportH = (tg && typeof tg.viewportStableHeight === 'number' && tg.viewportStableHeight > 0)
         ? tg.viewportStableHeight
         : window.innerHeight;
-      document.documentElement.style.setProperty('--app-h', appH + 'px');
-      if (tg && tg.safeAreaInset) {
-        const safeTop = typeof tg.safeAreaInset.top === 'number' ? tg.safeAreaInset.top : 0;
-        const safeBottom = typeof tg.safeAreaInset.bottom === 'number' ? tg.safeAreaInset.bottom : 0;
-        document.documentElement.style.setProperty('--safe-top', safeTop + 'px');
-        document.documentElement.style.setProperty('--safe-bottom', safeBottom + 'px');
-      }
+      const isIos = !!(tg && tg.platform === 'ios');
+      const topbar = isIos ? 52 : 0;
+      document.documentElement.style.setProperty('--app-h', viewportH + 'px');
+      document.documentElement.style.setProperty('--tg-safe-top', safeTop + 'px');
+      document.documentElement.style.setProperty('--tg-safe-bottom', safeBottom + 'px');
+      document.documentElement.style.setProperty('--tg-topbar', topbar + 'px');
+      document.body.classList.toggle('tg-webapp', !!tg);
     }
     function updateLayoutHeights() {
       const header = document.querySelector('header');
@@ -1356,6 +1381,9 @@
     }
     window.addEventListener('resize', handleViewportChange);
     window.addEventListener('orientationchange', handleViewportChange);
+    window.addEventListener('DOMContentLoaded', () => {
+      updateViewportVars();
+    });
     window.addEventListener('load', () => {
       updateViewportVars();
       if (window.Telegram && Telegram.WebApp && typeof Telegram.WebApp.onEvent === 'function') {

@@ -3,46 +3,94 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Telegram MiniApp — Моя лента</title>
+  <title>Telegram MiniApp - Моя лента</title>
   <style>
     :root{
-      --bg:#071022; --surface:#081426; --text:#e6eef8; --muted:#9fb3d6; --accent:#2a8cff;
-      --accent-rgb:42,140,255; --pill-bg:rgba(255,255,255,0.04); --btn-alpha:0.12
+      --bg:#0b1226;
+      --surface:#0e1730;
+      --surface-2:#101c38;
+      --text:#eef2ff;
+      --muted:#9fb0d0;
+      --accent:#ff8a3d;
+      --accent-2:#4cc9f0;
+      --accent-rgb:255,138,61;
+      --border:rgba(255,255,255,0.06);
+      --pill-bg:rgba(255,255,255,0.06);
+      --btn-alpha:0.16;
+      --radius:14px;
+      --shadow:0 16px 40px rgba(2,8,20,0.45);
+      --header-h:168px;
+      --bottom-h:64px;
     }
-    html,body{height:100%;margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,'Helvetica Neue',Arial}
-    body{background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased}
-    canvas#bgCanvas{position:fixed;left:0;top:0;right:0;bottom:0;z-index:0;pointer-events:none}
-  .app{position:relative;z-index:2;max-width:960px;margin:0 auto;padding-top:120px;padding-bottom:80px}
-  /* make header fixed so it stays visible in Telegram WebView */
-  header{position:fixed;top:0;left:0;right:0;z-index:60;background:linear-gradient(180deg, rgba(6,10,20,0.98), rgba(6,10,20,0.9));padding:14px}
-  main{height:calc(100vh - 120px - 80px);overflow:auto}
-    .title-row{display:flex;align-items:center;justify-content:space-between}
-    h1{font-size:18px;margin:0}
-    .user{color:var(--muted);font-size:13px;margin-top:6px}
-    main{padding:12px 18px 110px}
-    .news-list{display:flex;flex-direction:column;gap:10px}
-    .card{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));border-radius:10px;padding:12px;cursor:pointer;border:1px solid rgba(255,255,255,0.03)}
-    .card h4{margin:0 0 6px 0}
-    .card p{margin:0;color:var(--muted);font-size:13px}
-    .meta{display:flex;justify-content:space-between;margin-top:8px;font-size:12px;color:var(--muted)}
-  /* fixed bottom bar */
-  .bottom-bar{position:fixed;left:0;right:0;bottom:0;background:var(--surface);padding:10px 12px;display:flex;justify-content:center;z-index:50;border-top:1px solid rgba(255,255,255,0.03)}
-    .btn{background:rgba(var(--accent-rgb),var(--btn-alpha));border:0;padding:8px 12px;border-radius:8px;color:var(--text);cursor:pointer}
-    .btn.ghost{background:transparent;border:1px solid rgba(255,255,255,0.04)}
-  /* removed global translate FAB */
+    html,body{height:100%;margin:0;font-family:"Space Grotesk","IBM Plex Sans","Segoe UI",sans-serif}
+    body{
+      background:
+        radial-gradient(900px 520px at 10% -10%, rgba(255,138,61,0.18), transparent 60%),
+        radial-gradient(720px 400px at 90% 10%, rgba(76,201,240,0.18), transparent 60%),
+        linear-gradient(180deg, #080f22 0%, #0b1226 45%, #0b1226 100%);
+      color:var(--text);
+      -webkit-font-smoothing:antialiased;
+    }
+    canvas#bgCanvas{position:fixed;left:0;top:0;right:0;bottom:0;z-index:0;pointer-events:none;opacity:0.4}
+    .app{position:relative;z-index:2;max-width:1024px;margin:0 auto;padding-top:calc(var(--header-h) + 14px);padding-bottom:calc(var(--bottom-h) + 20px)}
+    /* make header fixed so it stays visible in Telegram WebView */
+    header{position:fixed;top:0;left:0;right:0;z-index:60;background:linear-gradient(180deg, rgba(8,13,25,0.98), rgba(8,13,25,0.86));padding:14px 18px 12px;border-bottom:1px solid var(--border);backdrop-filter:blur(10px)}
+    main{height:calc(100vh - var(--header-h) - var(--bottom-h));overflow:auto;padding:12px 18px 110px}
+    .title-row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+    h1{font-size:20px;margin:0;letter-spacing:0.2px}
+    .brand{display:flex;align-items:center;gap:12px}
+    .logo{width:34px;height:34px;border-radius:12px;background:linear-gradient(140deg, var(--accent), var(--accent-2));display:grid;place-items:center;color:#081022;font-weight:700}
+    .user{color:var(--muted);font-size:13px;margin-top:4px}
+    .toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px}
+    .search-wrap{flex:1;min-width:180px;display:flex;gap:8px}
+    .input, .source-select{background:var(--surface);color:var(--text);border:1px solid var(--border);padding:10px 12px;border-radius:10px;font-size:14px;outline:none}
+    .input::placeholder{color:#7686a6}
+    .source-select{min-width:160px}
+    .chip{border:1px solid var(--border);background:transparent;color:var(--text);padding:9px 12px;border-radius:999px;font-size:13px;cursor:pointer}
+    .chip.active{background:rgba(var(--accent-rgb),0.18);border-color:rgba(var(--accent-rgb),0.4)}
+    .stats{display:flex;gap:10px;margin-top:10px;flex-wrap:wrap}
+    .stat-pill{background:var(--pill-bg);border:1px solid var(--border);padding:6px 10px;border-radius:999px;font-size:12px;color:var(--muted)}
+    .status-pill{background:rgba(76,201,240,0.14);border:1px solid rgba(76,201,240,0.32);padding:6px 10px;border-radius:999px;font-size:12px;color:#bdeaf7;opacity:0;transition:opacity .2s}
+    .status-pill.show{opacity:1}
+    .panel{background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius);padding:12px;box-shadow:var(--shadow)}
+    .news-list{display:flex;flex-direction:column;gap:12px;margin-top:12px}
+    .card{background:linear-gradient(180deg, rgba(255,255,255,0.035), rgba(255,255,255,0.01));border-radius:var(--radius);padding:14px;cursor:pointer;border:1px solid rgba(255,255,255,0.06);transition:transform .12s ease, border-color .2s ease}
+    .card:hover{transform:translateY(-2px);border-color:rgba(255,138,61,0.35)}
+    .card h4{margin:0 0 6px 0;font-size:15px;line-height:1.3}
+    .card p{margin:0;color:var(--muted);font-size:13px;line-height:1.45}
+    .meta{display:flex;justify-content:space-between;margin-top:10px;font-size:12px;color:var(--muted);align-items:center}
+    .meta-left{display:flex;align-items:center;gap:8px}
+    .tag{background:rgba(255,255,255,0.06);padding:3px 8px;border-radius:999px;font-size:11px;color:var(--muted)}
+    .time{color:#8da1c7}
+    /* fixed bottom bar */
+    .bottom-bar{position:fixed;left:0;right:0;bottom:0;background:linear-gradient(180deg, rgba(12,20,40,0.92), rgba(12,20,40,0.98));padding:10px 12px;display:flex;justify-content:center;z-index:50;border-top:1px solid var(--border)}
+    .btn{background:rgba(var(--accent-rgb),var(--btn-alpha));border:0;padding:9px 12px;border-radius:10px;color:var(--text);cursor:pointer;transition:transform .1s ease}
+    .btn:active{transform:scale(0.98)}
+    .btn.ghost{background:transparent;border:1px solid var(--border)}
+    .btn.small{padding:8px 10px;font-size:12px}
     .modal-backdrop{position:fixed;left:0;top:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.45);z-index:6}
-    .modal{background:var(--surface);padding:14px;border-radius:12px;max-width:820px;width:94%;box-shadow:0 8px 30px rgba(0,0,0,0.6);color:var(--text);position:relative}
+    .modal{background:var(--surface);padding:18px;border-radius:16px;max-width:820px;width:94%;box-shadow:0 8px 30px rgba(0,0,0,0.6);color:var(--text);position:relative}
     .modal .close{position:absolute;right:18px;top:18px;background:transparent;border:0;color:var(--muted);cursor:pointer}
-    .debug{position:fixed;left:10px;bottom:80px;background:#fffb;color:#000;padding:8px;border-radius:6px;z-index:6;font-size:13px}
-    .toggle{width:42px;height:26px;background:rgba(255,255,255,0.06);border-radius:999px;display:inline-flex;align-items:center;padding:4px;cursor:pointer}
-    .toggle.on{background:rgba(var(--accent-rgb),0.22)}
+    .translate-row{display:flex;gap:8px;align-items:center;margin-top:12px;flex-wrap:wrap}
+    .translate-output{margin-top:10px;padding:10px 12px;border-radius:12px;background:rgba(255,255,255,0.04);border:1px solid var(--border);color:var(--text);font-size:13px}
+    .lang-select{background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:8px 10px;font-size:12px}
+    .toggle{width:44px;height:26px;background:rgba(255,255,255,0.08);border-radius:999px;display:inline-flex;align-items:center;padding:4px;cursor:pointer;border:1px solid var(--border)}
+    .toggle.on{background:rgba(var(--accent-rgb),0.28)}
     .toggle .dot{width:18px;height:18px;background:white;border-radius:50%;transform:translateX(0);transition:transform .18s}
     .toggle.on .dot{transform:translateX(16px)}
     .badge{background:rgba(255,255,255,0.04);padding:4px 8px;border-radius:999px;font-size:12px;color:var(--muted)}
-    .skeleton{height:14px;background:linear-gradient(90deg, rgba(255,255,255,0.02), rgba(255,255,255,0.04));border-radius:6px}
-    /* Source selector */
-    .source-select{background:var(--surface);color:var(--text);border:1px solid rgba(255,255,255,0.04);padding:8px 10px;border-radius:8px;font-size:14px}
+    .skeleton{height:14px;background:linear-gradient(90deg, rgba(255,255,255,0.02), rgba(255,255,255,0.08), rgba(255,255,255,0.02));border-radius:6px;animation:shimmer 1.3s infinite;background-size:200px 100%}
+    .empty{padding:30px 16px;text-align:center;color:var(--muted)}
+    .status-pill.error{background:rgba(255,120,120,0.16);border-color:rgba(255,120,120,0.35);color:#ffd0d0}
     a{color:inherit}
+    @keyframes shimmer{0%{background-position:-120px 0}100%{background-position:120px 0}}
+    @media (max-width:720px){
+      :root{--header-h:188px}
+      .title-row{flex-direction:column;align-items:flex-start}
+      .toolbar{align-items:stretch}
+      .search-wrap{flex-direction:column}
+      .bottom-bar{padding:8px}
+    }
   </style>
 </head>
 <body>
@@ -50,29 +98,48 @@
   <div class="app" id="app">
     <header>
       <div class="title-row">
-        <div>
-          <h1>Моя лента</h1>
-          <div class="user" id="userInfo">Загрузка…</div>
+        <div class="brand">
+          <div class="logo">N</div>
+          <div>
+            <h1>Моя лента</h1>
+            <div class="user" id="userInfo">Загрузка:</div>
+          </div>
         </div>
         <div style="display:flex;gap:8px;align-items:center">
           <button id="btnClose" class="btn ghost" title="Закрыть приложение">✖ Закрыть</button>
         </div>
       </div>
-      <!-- Source selector (populated by JS) -->
-      <div style="margin-top:10px;display:flex;gap:8px;align-items:center">
+      <div class="toolbar">
+        <div class="search-wrap">
+          <input id="inputSearch" class="input" placeholder="Поиск по заголовкам и описанию" />
+          <button id="btnClearSearch" class="btn small ghost" title="Очистить поиск">Очистить</button>
+        </div>
         <select id="sourceSelect" class="source-select" aria-label="Выбор источника"></select>
+        <button id="btnFavFilter" class="chip" aria-pressed="false">Только избранные</button>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span class="badge">Фон</span>
+          <button id="bgToggle" class="toggle" aria-label="Анимация фона"><span class="dot"></span></button>
+        </div>
+      </div>
+      <div class="stats">
+        <div id="statCount" class="stat-pill">0 новостей</div>
+        <div id="statSource" class="stat-pill">Источник: —</div>
+        <div id="statusPill" class="status-pill">Загрузка...</div>
       </div>
     </header>
     <main>
-      <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
-        <input id="inputFeed" placeholder="rss:https://example.com/feed.xml или https://api.example.com/news.json" style="flex:1;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:var(--text)" />
-        <button id="btnLoad" class="btn">Загрузить</button>
+      <div class="panel">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <input id="inputFeed" class="input" placeholder="rss:https://example.com/feed.xml или https://api.example.com/news.json" style="flex:1;min-width:200px" />
+          <button id="btnLoad" class="btn">Загрузить</button>
+        </div>
       </div>
       <div id="news" class="news-list"></div>
+      <div id="emptyState" class="empty" style="display:none">Пока ничего нет. Попробуйте выбрать другой источник или изменить поиск.</div>
     </main>
 
     <div class="bottom-bar">
-      <button id="btnLoadMore" class="btn">Загрузить ещё</button>
+      <button id="btnLoadMore" class="btn">Загрузить еще</button>
     </div>
   </div>
 
@@ -81,10 +148,13 @@
       <h4 class="ttl"></h4>
       <p class="desc"></p>
       <div class="meta">
-        <div class="source"></div>
+        <div class="meta-left">
+          <div class="source tag"></div>
+          <div class="time"></div>
+        </div>
         <div style="display:flex;gap:8px;align-items:center">
           <!-- translation badge removed -->
-          <button class="btn btnFav">★</button>
+          <button class="btn btnFav">☆</button>
         </div>
       </div>
     </div>
@@ -96,11 +166,13 @@
     // Minimal Telegram.WebApp shim for local testing
     window.Telegram = window.Telegram || { WebApp: { initData: null, initDataUnsafe: {}, platform: 'web' }};
 
-  // LocalStorage keys
-  const LS_FAV = 'tg_minapp_fav_v1';
-  const LS_LAST = 'tg_minapp_last_v1';
-  const LS_BG = 'tg_minapp_bg_anim_v1';
-  const LS_THEME = 'tg_minapp_theme_override';
+    // LocalStorage keys
+    const LS_FAV = 'tg_minapp_fav_v1';
+    const LS_LAST = 'tg_minapp_last_v1';
+    const LS_BG = 'tg_minapp_bg_anim_v1';
+    const LS_THEME = 'tg_minapp_theme_override';
+    const LS_TRANSLATIONS = 'tg_translations_v1';
+    const TRANSLATE_API = 'https://YOUR_DOMAIN/translate';
 
     // Config: change to your feed. Supports 'rss:<URL>' or 'https://.../json'
     let fetchUrl = 'rss:https://rss.nytimes.com/services/xml/rss/nyt/World.xml';
@@ -113,7 +185,6 @@
       {id:'bbc', name:'BBC News', url:'rss:https://feeds.bbci.co.uk/news/rss.xml'},
       {id:'cnn', name:'CNN', url:'rss:http://rss.cnn.com/rss/edition.rss'},
       {id:'guardian', name:'The Guardian', url:'rss:https://www.theguardian.com/world/rss'},
-      {id:'reuters', name:'Reuters', url:'rss:https://www.reuters.com/tools/rss'},
       {id:'aljazeera', name:'Al Jazeera', url:'rss:https://www.aljazeera.com/xml/rss/all.xml'},
       {id:'bloomberg', name:'Bloomberg', url:'rss:https://www.bloomberg.com/feed/podcast/etf.xml'},
       {id:'techcrunch', name:'TechCrunch', url:'rss:https://techcrunch.com/feed/'},
@@ -155,7 +226,7 @@
           fetchUrl = src.url; document.getElementById('inputFeed').value = fetchUrl; loadNews(src.url);
         }
       });
-  // selection change already triggers load; no top reload button present
+      // selection change already triggers load; no top reload button present
     }
 
     // Load news by source id (modular entrypoint)
@@ -166,23 +237,36 @@
       catch(e){ console.error('loadNewsById', e); setStatus('Ошибка при загрузке источника'); }
     }
 
-  // Small mock fallback
-  const BASE_NEWS = [{id:'m1',title:'Пример новости',summary:'Короткое описание',link:'#',source:'Пример'}];
+    // Small mock fallback
+    const BASE_NEWS = [{id:'m1',title:'Пример новости',summary:'Короткое описание',link:'#',source:'Пример',date:new Date().toISOString()}];
 
-  let news = [];
-  let isLoading = false;
-  let favs = new Set(JSON.parse(localStorage.getItem(LS_FAV)||'[]'));
-  // pagination / UI state
-  const PAGE_SIZE = 10;
-  let displayedCount = 0; // how many items currently rendered
+    let news = [];
+    let isLoading = false;
+    let favs = new Set(JSON.parse(localStorage.getItem(LS_FAV)||'[]'));
+    let favFilterOn = false;
+    // pagination / UI state
+    const PAGE_SIZE = 10;
+    let displayedCount = 0; // how many items currently rendered
 
-  const $ = (sel,root=document)=>root.querySelector(sel);
-  const $$ = (sel,root=document)=>Array.from(root.querySelectorAll(sel));
+    const $ = (sel,root=document)=>root.querySelector(sel);
+    const $$ = (sel,root=document)=>Array.from(root.querySelectorAll(sel));
 
     // Utilities
-  function saveFavs(){ localStorage.setItem(LS_FAV, JSON.stringify(Array.from(favs))); }
-  // lightweight status: log + show debug banner if exists
-  function setStatus(text){ try{ const dbg = document.getElementById('debugBanner'); if(dbg){ dbg.style.display='block'; dbg.textContent = text; setTimeout(()=>{ dbg.style.display='none'; }, 2500); } }catch(e){} console.log('[status]', text); }
+    function saveFavs(){ localStorage.setItem(LS_FAV, JSON.stringify(Array.from(favs))); }
+    // lightweight status: log + show status pill
+    function setStatus(text, isError=false){
+      try{
+        const pill = document.getElementById('statusPill');
+        if(pill){
+          pill.textContent = text;
+          pill.classList.toggle('error', !!isError);
+          pill.classList.add('show');
+          clearTimeout(pill._hideTimer);
+          pill._hideTimer = setTimeout(()=>pill.classList.remove('show'), isError ? 3600 : 2200);
+        }
+      }catch(e){}
+      console.log('[status]', text);
+    }
 
     // Fetch helpers
     async function fetchWithTimeout(url, opts={}, ms=12000){
@@ -193,16 +277,28 @@
 
     async function fetchRssViaAllOrigins(rssUrl){
       // Try a few public CORS proxies in order to improve success rate in browsers.
+      let jinaUrl = null;
+      try{
+        const u = new URL(rssUrl);
+        const proto = u.protocol.replace(':','');
+        jinaUrl = `https://r.jina.ai/${proto}://${u.host}${u.pathname}${u.search}${u.hash}`;
+      }catch(e){}
       const proxies = [
-        { url: url => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url), type: 'text' },
-        { url: url => 'https://api.allorigins.win/get?url=' + encodeURIComponent(url), type: 'json' }
+        { name:'allorigins raw', url: url => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url), type: 'text' },
+        { name:'allorigins get', url: url => 'https://api.allorigins.win/get?url=' + encodeURIComponent(url), type: 'json' },
+        ...(jinaUrl ? [{ name:'jina ai', url: () => jinaUrl, type: 'text-fallback' }] : [])
       ];
       let lastErr = null;
       for(const p of proxies){
         try{
-          setStatus('Прокси: ' + (p.type) + ' — загрузка...');
-          const res = await fetchWithTimeout(p.url(rssUrl), {}, 12000);
-          if(!res.ok) throw new Error('proxy returned ' + res.status);
+          const proxyUrl = p.url(rssUrl);
+          setStatus(`RSS: ${p.name} (loading)`);
+          const res = await fetchWithTimeout(proxyUrl, {}, 20000);
+          if(!res.ok){
+            console.warn('RSS proxy non-OK', { proxy: p.type, proxyUrl, rssUrl, status: res.status });
+            setStatus(`RSS: ${p.name} (HTTP ${res.status})`, true);
+            throw new Error(`RSS: ${p.name} HTTP ${res.status}`);
+          }
           let txt = null;
           if(p.type === 'json'){
             const j = await res.json(); txt = j && (j.contents || j.contents_text || j.contents_html) ? (j.contents || j.contents_text || j.contents_html) : JSON.stringify(j);
@@ -211,24 +307,69 @@
           }
           const doc = new DOMParser().parseFromString(txt, 'application/xml');
           const items = Array.from(doc.querySelectorAll('item,entry'));
-          if(!items.length) throw new Error('no items parsed from RSS');
-          setStatus('Прокси успешен');
+          const parserError = doc.querySelector('parsererror');
+          if(parserError){
+            console.warn('RSS parsererror', { rssUrl, proxy: p.type });
+            setStatus(`RSS: ${p.name} (parsererror)`, true);
+            throw new Error(`RSS: ${p.name} parsererror`);
+          }
+          if(!items.length){
+            console.warn('RSS no items', { rssUrl, proxy: p.type });
+            setStatus(`RSS: ${p.name} (no items)`, true);
+            throw new Error(`RSS: ${p.name} no items`);
+          }
+          setStatus(`RSS: ${p.name} OK`);
           return items.map((it,i)=>({
             id: 'rss-' + (it.querySelector('guid')?.textContent || i + '-' + (it.querySelector('title')?.textContent||'')),
             title: it.querySelector('title')?.textContent || it.querySelector('title')?.textContent || 'Без названия',
             summary: it.querySelector('description')?.textContent || it.querySelector('summary')?.textContent || '',
-            link: it.querySelector('link')?.textContent || it.querySelector('id')?.textContent || '#',
-            source: doc.querySelector('channel > title')?.textContent || 'RSS'
+            link: it.querySelector('link')?.getAttribute('href') || it.querySelector('link')?.textContent || it.querySelector('id')?.textContent || '#',
+            source: doc.querySelector('channel > title')?.textContent || 'RSS',
+            date: it.querySelector('pubDate')?.textContent || it.querySelector('updated')?.textContent || it.querySelector('published')?.textContent || ''
           }));
         }catch(err){
-          console.warn('fetchRssViaAllOrigins proxy failed:', p, err);
+          console.warn('fetchRssViaAllOrigins proxy failed:', { proxy: p.type, rssUrl, err });
           lastErr = err;
           // try next proxy
         }
       }
+      try{
+        setStatus('RSS: rss2json (loading)');
+        const items = await fetchRssViaRss2Json(rssUrl);
+        setStatus('RSS: rss2json OK');
+        return items;
+      }catch(err){
+        console.warn('RSS rss2json failed', { rssUrl, err });
+        setStatus('RSS: rss2json (error)', true);
+        lastErr = err;
+      }
       // If all proxies failed, surface a clear error
-      setStatus('Ошибка загрузки RSS (прокси недоступны)');
-      throw lastErr || new Error('all proxies failed');
+      const lastMsg = lastErr && lastErr.message ? lastErr.message : '';
+      if(lastMsg.startsWith('RSS:')){
+        setStatus(lastMsg, true);
+      } else {
+        setStatus('RSS: CORS/прокси недоступен', true);
+      }
+      throw lastErr || new Error('RSS: прокси недоступны');
+    }
+
+    async function fetchRssViaRss2Json(rssUrl){
+      const url = 'https://api.rss2json.com/v1/api.json?rss_url=' + encodeURIComponent(rssUrl);
+      const res = await fetchWithTimeout(url, {}, 20000);
+      if(!res.ok) throw new Error('RSS: rss2json HTTP ' + res.status);
+      const data = await res.json();
+      if(!data || !Array.isArray(data.items)){
+        throw new Error('RSS: rss2json invalid');
+      }
+      const source = (data.feed && data.feed.title) ? data.feed.title : 'RSS';
+      return data.items.map((it,i)=>({
+        id: 'rss2json-' + (it.guid || it.id || i),
+        title: it.title || 'Без названия',
+        summary: it.description || it.content || '',
+        link: it.link || it.url || '#',
+        source,
+        date: it.pubDate || it.published || it.date || ''
+      }));
     }
 
     async function loadNews(url){
@@ -242,28 +383,83 @@
           items = await fetchRssViaAllOrigins(r);
         } else {
           const res = await fetchWithTimeout(url, {}, 12000);
-          items = await res.json();
-          // normalize if coming as {items:[]}
-          if(Array.isArray(items.items)) items = items.items;
-          items = items.map((it,i)=>({ id: it.id || it.guid || 'j-' + i, title: it.title || it.name || 'Без названия', summary: it.summary || it.description || it.excerpt || '', link: it.url || it.link || '#', source: it.source || it.feed || 'JSON' }));
+          if(!res.ok){
+            console.error('JSON non-OK', { url, status: res.status });
+            throw new Error('JSON: HTTP ' + res.status);
+          }
+          const obj = await res.json();
+          if(Array.isArray(obj)) items = obj;
+          else if(obj && typeof obj === 'object'){
+            items = obj.items || obj.articles || obj.data || obj.results || [];
+          }
+          if(!Array.isArray(items)){
+            console.error('JSON invalid shape', { url, obj });
+            throw new Error('JSON: не найден массив items');
+          }
+          items = items.map((it,i)=>({
+            id: it.id || it.guid || 'j-' + i,
+            title: it.title || it.name || 'Без названия',
+            summary: it.summary || it.description || it.excerpt || '',
+            link: it.url || it.link || '#',
+            source: it.source || it.feed || 'JSON',
+            date: it.date || it.published_at || it.pubDate || it.time || ''
+          }));
         }
         news = items.length ? items : BASE_NEWS;
         // reset pagination
-        displayedCount = Math.min(PAGE_SIZE, news.length);
+        displayedCount = Math.min(PAGE_SIZE, getFilteredNews().length);
         localStorage.setItem(LS_LAST, JSON.stringify(news));
         setStatus('Готово');
       } catch(err){
-        console.error('loadNews', err);
-        setStatus('Ошибка, используем кэш');
+        console.error('loadNews', { err, url });
         const cached = JSON.parse(localStorage.getItem(LS_LAST) || 'null');
         news = cached && cached.length ? cached : BASE_NEWS;
-        displayedCount = Math.min(PAGE_SIZE, news.length);
+        displayedCount = Math.min(PAGE_SIZE, getFilteredNews().length);
+        const msg = err && err.message ? err.message : 'Ошибка загрузки';
+        setStatus(msg + '. Ошибка загрузки, показан кэш', true);
       } finally{
         isLoading = false; renderNews();
       }
     }
 
     // Render
+    function normalizeText(s){ return (s || '').toLowerCase(); }
+    function getFilteredNews(){
+      const q = normalizeText(document.getElementById('inputSearch')?.value || '');
+      let list = news;
+      if(favFilterOn) list = list.filter(it=>favs.has(it.id));
+      if(q) list = list.filter(it=>{
+        const title = normalizeText(it.title);
+        const desc = normalizeText(it.summary);
+        return title.includes(q) || desc.includes(q);
+      });
+      return list;
+    }
+    function formatTime(d){
+      if(!d) return '';
+      const dt = new Date(d);
+      if(Number.isNaN(dt.getTime())){
+        const parsed = Date.parse(d);
+        if(Number.isNaN(parsed)) return '';
+        return formatTime(new Date(parsed));
+      }
+      const now = new Date();
+      const diff = Math.floor((now - dt) / 60000);
+      if(diff < 60) return diff <= 1 ? 'только что' : `${diff} мин назад`;
+      const hours = Math.floor(diff / 60);
+      if(hours < 24) return `${hours} ч назад`;
+      return dt.toLocaleDateString('ru-RU', { day:'2-digit', month:'short' });
+    }
+    function updateStats(list){
+      const total = news.length || 0;
+      const shown = list.length || 0;
+      const srcId = localStorage.getItem(LS_SRC);
+      const src = SOURCES.find(s=>s.id===srcId);
+      const countEl = document.getElementById('statCount');
+      const srcEl = document.getElementById('statSource');
+      if(countEl) countEl.textContent = `${shown} из ${total} новостей`;
+      if(srcEl) srcEl.textContent = `Источник: ${src ? src.name : 'ручной'}`;
+    }
     function renderNews(){
       const root = $('#news'); root.innerHTML = '';
       if(isLoading){
@@ -273,7 +469,11 @@
         return;
       }
       // render only up to displayedCount for 'Load more' pagination
-      const list = news.slice(0, displayedCount);
+      const filtered = getFilteredNews();
+      const list = filtered.slice(0, displayedCount);
+      updateStats(filtered);
+      const empty = document.getElementById('emptyState');
+      if(empty) empty.style.display = list.length ? 'none' : 'block';
       const frag = document.createDocumentFragment();
       list.forEach(it=>{
         const tpl = document.getElementById('cardTpl');
@@ -281,16 +481,17 @@
         node.querySelector('.ttl').textContent = it.title;
         node.querySelector('.desc').textContent = it.summary ? (it.summary.replace(/<[^>]+>/g,'').slice(0,220)) : '';
         node.querySelector('.source').textContent = it.source || '';
+        node.querySelector('.time').textContent = formatTime(it.date);
         const favBtn = node.querySelector('.btnFav');
         favBtn.textContent = favs.has(it.id) ? '★' : '☆';
-        favBtn.addEventListener('click', (ev)=>{ ev.stopPropagation(); toggleFav(it.id); favBtn.textContent = favs.has(it.id) ? '★' : '☆'; });
+        favBtn.addEventListener('click', (ev)=>{ ev.stopPropagation(); toggleFav(it.id); favBtn.textContent = favs.has(it.id) ? '★' : '☆'; renderNews(); });
         node.addEventListener('click', (ev)=>{ if(ev.ctrlKey||ev.metaKey){ window.open(it.link,'_blank'); } else openDetail(it); });
         frag.appendChild(node);
       });
       root.appendChild(frag);
       // toggle Load more button
       const moreBtn = document.getElementById('btnLoadMore');
-      if(moreBtn) moreBtn.disabled = displayedCount >= news.length;
+      if(moreBtn) moreBtn.disabled = displayedCount >= getFilteredNews().length;
     }
 
     // Modal
@@ -298,20 +499,102 @@
       const root = $('#modalRoot'); root.style.display = 'flex'; root.innerHTML = '';
       const back = document.createElement('div'); back.className='modal-backdrop';
       const modal = document.createElement('div'); modal.className='modal';
-  modal.innerHTML = `<button class="close">✖</button><h3>${escapeHtml(it.title)}</h3><div style="color:var(--muted);font-size:13px;margin-top:8px" id="modalSummary">${escapeHtml(it.summary||'')}</div><div style="margin-top:12px;display:flex;gap:8px"><a id="openLink" class="btn" target="_blank">Открыть</a></div>`;
-    back.appendChild(modal); root.appendChild(back);
-    back.addEventListener('click',(e)=>{ if(e.target===back) closeDetail(); });
-    modal.querySelector('.close').addEventListener('click',closeDetail);
-    const openLink = modal.querySelector('#openLink'); openLink.href = it.link; openLink.textContent = 'Открыть источник';
+      const timeLabel = formatTime(it.date);
+      modal.innerHTML = `<button class="close">✖</button><h3>${escapeHtml(it.title)}</h3><div style="color:var(--muted);font-size:12px;margin-top:6px">${escapeHtml(it.source||'')}${timeLabel ? ' · ' + timeLabel : ''}</div><div style="color:var(--muted);font-size:13px;margin-top:8px" id="modalSummary">${escapeHtml(it.summary||'')}</div><div style="margin-top:12px;display:flex;gap:8px"><a id="openLink" class="btn" target="_blank">Открыть</a></div>`;
+      back.appendChild(modal); root.appendChild(back);
+      back.addEventListener('click',(e)=>{ if(e.target===back) closeDetail(); });
+      modal.querySelector('.close').addEventListener('click',closeDetail);
+      const openLink = modal.querySelector('#openLink'); openLink.href = it.link; openLink.textContent = 'Открыть источник';
+      const summaryEl = modal.querySelector('#modalSummary');
+      if(summaryEl){
+        const translateRow = document.createElement('div');
+        translateRow.className = 'translate-row';
+        const translateBtn = document.createElement('button');
+        translateBtn.id = 'btnTranslate';
+        translateBtn.className = 'btn';
+        translateBtn.textContent = '🌐 Перевести';
+        const openBtn = document.createElement('button');
+        openBtn.id = 'btnTranslateOpen';
+        openBtn.className = 'btn ghost';
+        openBtn.textContent = '↗ Перевести (открыть)';
+        const langSel = document.createElement('select');
+        langSel.id = 'translateLang';
+        langSel.className = 'lang-select';
+        langSel.setAttribute('aria-label', 'Язык перевода');
+        const optRu = document.createElement('option'); optRu.value = 'ru'; optRu.textContent = 'RU';
+        const optEn = document.createElement('option'); optEn.value = 'en'; optEn.textContent = 'EN';
+        langSel.appendChild(optRu); langSel.appendChild(optEn);
+        translateRow.appendChild(translateBtn);
+        translateRow.appendChild(openBtn);
+        translateRow.appendChild(langSel);
+        const translatedBlock = document.createElement('div');
+        translatedBlock.id = 'translatedBlock';
+        translatedBlock.className = 'translate-output';
+        translatedBlock.style.display = 'none';
+        summaryEl.insertAdjacentElement('afterend', translateRow);
+        translateRow.insertAdjacentElement('afterend', translatedBlock);
+        openBtn.addEventListener('click', ()=>{
+          const target = langSel.value || 'ru';
+          const rawText = (it.summary && it.summary.trim()) ? it.summary.trim() : (it.title || '').trim();
+          if(!rawText) return;
+          const text = rawText.slice(0, 1800);
+          const url = `https://translate.google.com/?sl=auto&tl=${encodeURIComponent(target)}&text=${encodeURIComponent(text)}&op=translate`;
+          window.open(url, '_blank');
+        });
+        translateBtn.addEventListener('click', async ()=>{
+          const target = langSel.value || 'ru';
+          const text = (it.summary && it.summary.trim()) ? it.summary.trim() : (it.title || '').trim();
+          if(!text) return;
+          const key = `${it.id}|${target}`;
+          const cached = translations[key];
+          if(cached){
+            translatedBlock.style.display = 'block';
+            translatedBlock.innerHTML = escapeHtml(cached);
+            translateBtn.textContent = 'Готово';
+            translateBtn.disabled = true;
+            setTimeout(()=>{ translateBtn.textContent = '🌐 Перевести'; translateBtn.disabled = false; }, 1200);
+            return;
+          }
+          translateBtn.textContent = 'Перевод...';
+          translateBtn.disabled = true;
+          try{
+            const translated = await translateViaBot(text, target);
+            translations[key] = translated;
+            localStorage.setItem(LS_TRANSLATIONS, JSON.stringify(translations));
+            translatedBlock.style.display = 'block';
+            translatedBlock.innerHTML = escapeHtml(translated || '');
+            translateBtn.textContent = 'Готово';
+            setTimeout(()=>{ translateBtn.textContent = '🌐 Перевести'; translateBtn.disabled = false; }, 1200);
+          }catch(err){
+            console.error('translate failed', err);
+            translatedBlock.style.display = 'block';
+            translatedBlock.innerHTML = escapeHtml('Перевод в приложении заблокирован (CORS). Используйте «Перевести (открыть)».');
+            translateBtn.textContent = 'Ошибка перевода';
+            setTimeout(()=>{ translateBtn.textContent = '🌐 Перевести'; translateBtn.disabled = false; }, 1500);
+          }
+        });
+      }
     }
     function closeDetail(){ const root = $('#modalRoot'); root.style.display='none'; root.innerHTML=''; }
 
-    // removed translation badge updater (translations disabled)
+    // Translation cache
+    let translations = {};
+    try{ translations = JSON.parse(localStorage.getItem(LS_TRANSLATIONS) || '{}') || {}; }catch(e){ translations = {}; }
 
     // Fav
     function toggleFav(id){ if(favs.has(id)) { favs.delete(id); } else { favs.add(id); } saveFavs(); }
 
-    // Translations removed: no background translation or external translators are used.
+    async function translateViaBot(q, target){
+      const initData = (window.Telegram && Telegram.WebApp && Telegram.WebApp.initData) ? Telegram.WebApp.initData : '';
+      const res = await fetchWithTimeout(TRANSLATE_API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ q, target, initData })
+      }, 12000);
+      if(!res.ok) throw new Error('translate status ' + res.status);
+      const data = await res.json();
+      return data && data.translatedText ? data.translatedText : '';
+    }
 
     // Simple escaping
     function escapeHtml(s){ if(!s) return ''; return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
@@ -326,14 +609,26 @@
     function applyTheme(){ const saved = localStorage.getItem(LS_THEME); if(saved==='dark') { document.documentElement.style.setProperty('--bg','#071022'); } else if(saved==='light'){ document.documentElement.style.setProperty('--bg','#f6f7fb'); document.documentElement.style.setProperty('--text','#071022'); } }
 
     // Bind UI
-  document.getElementById('btnLoad').addEventListener('click', ()=>{ const v = document.getElementById('inputFeed').value.trim(); if(v) { fetchUrl = v; loadNews(fetchUrl); } else loadNews(); });
-  document.getElementById('btnClose').addEventListener('click', ()=>{ if(window.Telegram && Telegram.WebApp && Telegram.WebApp.close) Telegram.WebApp.close(); else alert('Закрыть (имитация)'); });
-  const themeBtn = document.getElementById('btnToggleTheme'); if(themeBtn) themeBtn.addEventListener('click', ()=>{ const cur = localStorage.getItem(LS_THEME); const next = cur==='dark'?'light':'dark'; localStorage.setItem(LS_THEME,next); applyTheme(); });
-  const bgToggleBtn = document.getElementById('bgToggle'); if(bgToggleBtn) bgToggleBtn.addEventListener('click', ()=>{ const cur = localStorage.getItem(LS_BG)==='1'; localStorage.setItem(LS_BG, cur ? '0' : '1'); updateBgToggle(); });
-  // Load more button
-  const loadMoreBtn = document.getElementById('btnLoadMore'); if(loadMoreBtn){ loadMoreBtn.addEventListener('click', ()=>{ if(!news || !news.length) return; displayedCount = Math.min(news.length, displayedCount + PAGE_SIZE); renderNews(); }); }
+    document.getElementById('btnLoad').addEventListener('click', ()=>{ const v = document.getElementById('inputFeed').value.trim(); if(v) { fetchUrl = v; loadNews(fetchUrl); } else loadNews(); });
+    document.getElementById('btnClose').addEventListener('click', ()=>{ if(window.Telegram && Telegram.WebApp && Telegram.WebApp.close) Telegram.WebApp.close(); else alert('Закрыть (имитация)'); });
+    const themeBtn = document.getElementById('btnToggleTheme'); if(themeBtn) themeBtn.addEventListener('click', ()=>{ const cur = localStorage.getItem(LS_THEME); const next = cur==='dark'?'light':'dark'; localStorage.setItem(LS_THEME,next); applyTheme(); });
+    const bgToggleBtn = document.getElementById('bgToggle'); if(bgToggleBtn) bgToggleBtn.addEventListener('click', ()=>{ const cur = localStorage.getItem(LS_BG)==='1'; localStorage.setItem(LS_BG, cur ? '0' : '1'); updateBgToggle(); });
+    const searchInput = document.getElementById('inputSearch');
+    if(searchInput) searchInput.addEventListener('input', ()=>{ displayedCount = PAGE_SIZE; renderNews(); });
+    const clearSearch = document.getElementById('btnClearSearch');
+    if(clearSearch) clearSearch.addEventListener('click', ()=>{ if(searchInput) searchInput.value=''; displayedCount = PAGE_SIZE; renderNews(); });
+    const favFilterBtn = document.getElementById('btnFavFilter');
+    if(favFilterBtn) favFilterBtn.addEventListener('click', ()=>{
+      favFilterOn = !favFilterOn;
+      favFilterBtn.classList.toggle('active', favFilterOn);
+      favFilterBtn.setAttribute('aria-pressed', favFilterOn ? 'true' : 'false');
+      displayedCount = PAGE_SIZE;
+      renderNews();
+    });
+    // Load more button
+    const loadMoreBtn = document.getElementById('btnLoadMore'); if(loadMoreBtn){ loadMoreBtn.addEventListener('click', ()=>{ const list = getFilteredNews(); if(!list || !list.length) return; displayedCount = Math.min(list.length, displayedCount + PAGE_SIZE); renderNews(); }); }
 
-    function updateBgToggle(){ const on = localStorage.getItem(LS_BG)!=='0'; const el = document.getElementById('bgToggle'); el.classList.toggle('on', on); if(on){ resizeCanvas(); createStars(); drawBg(); } }
+    function updateBgToggle(){ const on = localStorage.getItem(LS_BG)!=='0'; const el = document.getElementById('bgToggle'); if(el) el.classList.toggle('on', on); if(on){ resizeCanvas(); createStars(); drawBg(); } }
 
     // Boot
     window.addEventListener('resize', resizeCanvas);
@@ -353,7 +648,6 @@
     // Global error handlers for debugging
     window.addEventListener('error', (e)=>{ console.error('Global error', e.error||e); });
     window.addEventListener('unhandledrejection', (e)=>{ console.error('Unhandled rejection', e.reason); });
-
   </script>
 </body>
 </html>

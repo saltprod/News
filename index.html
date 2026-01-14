@@ -62,15 +62,6 @@
       opacity: 0.55
     }
 
-    #tgTopSpacer {
-      height: 0;
-      pointer-events: none
-    }
-
-    .tg-webapp #tgTopSpacer {
-      height: calc(var(--tg-safe-top) + var(--tg-topbar))
-    }
-
     .app {
       position: relative;
       z-index: 2;
@@ -80,34 +71,27 @@
     }
 
     .tg-webapp .app {
-      min-height: calc(var(--app-h) - var(--tg-safe-top) - var(--tg-safe-bottom))
+      padding-top: calc(env(safe-area-inset-top) + 56px)
     }
 
     /* make header fixed so it stays visible in Telegram WebView */
     header {
-      position: fixed;
-      top: 0;
+      position: static;
       left: 0;
       right: 0;
       z-index: 60;
       background: linear-gradient(180deg, rgba(8, 13, 25, 0.98), rgba(8, 13, 25, 0.86));
-      padding: calc(10px + var(--safe-top)) 18px 12px;
+      padding: 10px 18px 12px;
       border-bottom: 1px solid var(--border);
       backdrop-filter: blur(10px)
-    }
-    .tg-webapp header {
-      top: calc(var(--tg-safe-top) + var(--tg-topbar))
     }
 
     main {
       height: calc(var(--app-h) - var(--header-h) - var(--bottom-h));
       overflow: auto;
-      padding: var(--header-h) 18px calc(16px + var(--safe-bottom));
+      padding: 12px 18px calc(16px + env(safe-area-inset-bottom));
       -webkit-overflow-scrolling: touch;
       overscroll-behavior: contain
-    }
-    .tg-webapp main {
-      height: calc(var(--app-h) - var(--tg-safe-top) - var(--tg-safe-bottom) - var(--header-h) - var(--bottom-h))
     }
 
     .header-top {
@@ -388,7 +372,7 @@
       bottom: 0;
       background: linear-gradient(180deg, rgba(12, 20, 40, 0.92), rgba(12, 20, 40, 0.98));
       padding: 10px 12px;
-      padding-bottom: calc(10px + var(--tg-safe-bottom));
+      padding-bottom: calc(10px + env(safe-area-inset-bottom));
       display: flex;
       justify-content: center;
       gap: 10px;
@@ -633,7 +617,7 @@
       }
 
       header {
-        padding: calc(6px + var(--safe-top)) 8px 6px
+        padding: 6px 8px 6px
       }
 
       .header-top {
@@ -698,7 +682,6 @@
 </head>
 
 <body>
-  <div id="tgTopSpacer" aria-hidden="true"></div>
   <canvas id="snowCanvas"></canvas>
   <div class="app" id="app">
     <header>

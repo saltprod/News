@@ -50,7 +50,7 @@
       }
     }
 
-    canvas#bgCanvas {
+    canvas#snowCanvas {
       position: fixed;
       left: 0;
       top: 0;
@@ -60,7 +60,7 @@
       pointer-events: none;
       opacity: 0.15
     }
-    body.bg-on canvas#bgCanvas {
+    body.bg-on canvas#snowCanvas {
       opacity: 0.55
     }
 
@@ -307,6 +307,7 @@
       padding-bottom: calc(10px + var(--safe-bottom));
       display: flex;
       justify-content: center;
+      gap: 10px;
       z-index: 50;
       border-top: 1px solid var(--border)
     }
@@ -461,6 +462,48 @@
       gap: 8px;
       align-items: center
     }
+    .settings-panel {
+      margin-top: 16px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px;
+      box-shadow: var(--shadow);
+      display: none
+    }
+    .settings-panel.show {
+      display: block
+    }
+    .settings-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px
+    }
+    .settings-title {
+      font-size: 12px;
+      letter-spacing: 0.4px;
+      text-transform: uppercase;
+      color: var(--muted)
+    }
+    .settings-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px
+    }
+    .settings-panel .input,
+    .settings-panel .btn {
+      min-height: 36px;
+      font-size: 12px;
+      padding: 6px 10px
+    }
+    .feed-advanced {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap
+    }
 
     .skeleton {
       height: 14px;
@@ -585,67 +628,64 @@
       .panel .feed-row {
         gap: 10px
       }
-
-      .feed-advanced {
-        display: none
+      .settings-panel {
+        padding: 10px
+      }
+      .settings-row {
+        min-height: 44px
+      }
+      .settings-panel .input,
+      .settings-panel .btn {
+        min-height: 36px
       }
 
-      .feed-advanced.show {
-        display: flex
-      }
     }
   </style>
 </head>
 
 <body>
-  <canvas id="bgCanvas"></canvas>
+  <canvas id="snowCanvas"></canvas>
   <div class="app" id="app">
     <header>
       <div class="title-row">
         <div class="brand">
           <div class="logo">N</div>
-          <div>
-            <h1>Моя лента</h1>
-            <div class="user" id="userInfo">Загрузка:</div>
-          </div>
+          <h1>Моя лента</h1>
         </div>
         <div class="title-actions">
           <select id="sourceSelect" class="source-select" aria-label="Выбор источника"></select>
-          <button id="btnToggleAdvanced" class="btn ghost">...</button>
+          <button id="btnFavFilter" class="chip" aria-pressed="false">Только избранные</button>
         </div>
       </div>
-      <div class="toolbar">
-        <button id="btnFavFilter" class="chip" aria-pressed="false">Только избранные</button>
-        <div class="bg-toggle-wrap">
-          <span id="bgLabel" class="badge">Фон: Выкл</span>
-          <button id="bgToggle" class="toggle" aria-label="Анимация фона"><span class="dot"></span></button>
-        </div>
-      </div>
+    </header>
+    <main>
       <div class="stats">
         <div id="statCount" class="stat-pill">0 новостей</div>
         <div id="statSource" class="stat-pill">Источник: —</div>
         <div id="statusPill" class="status-pill">Загрузка...</div>
       </div>
-    </header>
-    <main>
-      <div class="panel">
-        <div class="feed-row" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          <div id="feedAdvanced" class="feed-advanced"
-            style="display:flex;gap:8px;align-items:center;flex:1;min-width:200px">
-            <input id="inputFeed" class="input"
-              placeholder="rss:https://example.com/feed.xml или https://api.example.com/news.json"
-              style="flex:1;min-width:200px" />
-          </div>
+      <div id="news" class="news-list"></div>
+      <div id="emptyState" class="empty" style="display:none">Пока ничего нет. Попробуйте выбрать другой источник или изменить поиск.</div>
+      <div id="settingsPanel" class="settings-panel">
+        <div class="settings-head">
+          <div class="settings-title">Настройки</div>
+          <button id="btnCloseSettings" class="btn ghost">✕</button>
+        </div>
+        <div class="settings-row">
+          <span id="bgLabel" class="badge">Фон: Выкл</span>
+          <button id="bgToggle" class="toggle" aria-label="Анимация фона"><span class="dot"></span></button>
+        </div>
+        <div id="feedAdvanced" class="feed-advanced">
+          <input id="inputFeed" class="input"
+            placeholder="rss:https://example.com/feed.xml или https://api.example.com/news.json" />
           <button id="btnLoad" class="btn">Загрузить</button>
         </div>
       </div>
-      <div id="news" class="news-list"></div>
-      <div id="emptyState" class="empty" style="display:none">Пока ничего нет. Попробуйте выбрать другой источник или
-        изменить поиск.</div>
     </main>
 
     <div class="bottom-bar">
       <button id="btnLoadMore" class="btn">Загрузить еще</button>
+      <button id="btnSettings" class="btn ghost" aria-label="Настройки">⚙︎</button>
     </div>
   </div>
 
@@ -1042,11 +1082,63 @@
     // Simple escaping
     function escapeHtml(s) { if (!s) return ''; return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
-    // Canvas background (light-weight)
-    const canvas = document.getElementById('bgCanvas'); const ctx = canvas.getContext('2d'); let stars = [];
-    function resizeCanvas() { canvas.width = innerWidth; canvas.height = innerHeight; }
-    function createStars() { stars = []; const count = Math.round((innerWidth * innerHeight) / 70000); for (let i = 0; i < count; i++) { stars.push({ x: Math.random() * innerWidth, y: Math.random() * innerHeight, r: Math.random() * 1.2 + 0.2, a: Math.random() * 0.8 + 0.2, v: Math.random() * 0.2 - 0.05 }); } }
-    function drawBg() { ctx.clearRect(0, 0, canvas.width, canvas.height); for (const s of stars) { s.x += s.v; if (s.x < 0) s.x = canvas.width; if (s.x > canvas.width) s.x = 0; ctx.globalAlpha = s.a; ctx.fillStyle = '#7fb2ff'; ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2); ctx.fill(); } ctx.globalAlpha = 1; requestAnimationFrame(drawBg); }
+    // Snow background
+    const snowCanvas = document.getElementById('snowCanvas');
+    const snowCtx = snowCanvas ? snowCanvas.getContext('2d') : null;
+    let snowflakes = [];
+    let snowAnimId = null;
+    let snowRunning = false;
+    function resizeSnowCanvas() {
+      if (!snowCanvas) return;
+      snowCanvas.width = innerWidth;
+      snowCanvas.height = innerHeight;
+    }
+    function createSnow() {
+      snowflakes = [];
+      const count = Math.min(80, Math.max(40, Math.round((innerWidth * innerHeight) / 50000)));
+      for (let i = 0; i < count; i++) {
+        snowflakes.push({
+          x: Math.random() * innerWidth,
+          y: Math.random() * innerHeight,
+          r: Math.random() * 1.6 + 0.6,
+          a: Math.random() * 0.6 + 0.2,
+          v: Math.random() * 0.9 + 0.3,
+          d: Math.random() * 0.6 - 0.3
+        });
+      }
+    }
+    function drawSnow() {
+      if (!snowRunning || !snowCtx || !snowCanvas) return;
+      snowCtx.clearRect(0, 0, snowCanvas.width, snowCanvas.height);
+      for (const s of snowflakes) {
+        s.y += s.v;
+        s.x += s.d;
+        if (s.y > snowCanvas.height + s.r) { s.y = -s.r; s.x = Math.random() * snowCanvas.width; }
+        if (s.x < -s.r) s.x = snowCanvas.width + s.r;
+        if (s.x > snowCanvas.width + s.r) s.x = -s.r;
+        snowCtx.globalAlpha = s.a;
+        snowCtx.fillStyle = '#e6f0ff';
+        snowCtx.beginPath();
+        snowCtx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+        snowCtx.fill();
+      }
+      snowCtx.globalAlpha = 1;
+      snowAnimId = requestAnimationFrame(drawSnow);
+    }
+    function startSnow() {
+      if (!snowCanvas || !snowCtx) return;
+      snowRunning = true;
+      resizeSnowCanvas();
+      createSnow();
+      if (snowAnimId) cancelAnimationFrame(snowAnimId);
+      drawSnow();
+    }
+    function stopSnow() {
+      snowRunning = false;
+      if (snowAnimId) cancelAnimationFrame(snowAnimId);
+      snowAnimId = null;
+      if (snowCtx && snowCanvas) snowCtx.clearRect(0, 0, snowCanvas.width, snowCanvas.height);
+    }
     function updateAppHeight() { document.documentElement.style.setProperty('--app-h', window.innerHeight + 'px'); }
     function updateLayoutHeights() {
       const header = document.querySelector('header');
@@ -1080,46 +1172,45 @@
       if (el) el.classList.toggle('on', on);
       if (label) label.textContent = on ? 'Фон: Вкл' : 'Фон: Выкл';
       document.body.classList.toggle('bg-on', on);
-      if (on) { resizeCanvas(); createStars(); drawBg(); }
+      if (on) startSnow(); else stopSnow();
     }
     function updateAdvancedVisibility() {
-      const adv = document.getElementById('feedAdvanced');
-      if (!adv) return;
+      const panel = document.getElementById('settingsPanel');
+      if (!panel) return;
       const isMobile = window.matchMedia('(max-width: 520px)').matches;
-      if (!isMobile) { adv.classList.add('show'); updateMobileHeaderState(false); updateLayoutHeights(); return; }
       const saved = localStorage.getItem(LS_UI_ADVANCED) === '1';
-      adv.classList.toggle('show', saved);
-      updateMobileHeaderState(true);
+      panel.classList.toggle('show', saved);
+      updateMobileHeaderState(isMobile);
       updateLayoutHeights();
     }
     function setAdvanced(open) {
       localStorage.setItem(LS_UI_ADVANCED, open ? '1' : '0');
       updateAdvancedVisibility();
     }
-    const advBtn = document.getElementById('btnToggleAdvanced');
-    if (advBtn) advBtn.addEventListener('click', () => {
-      const adv = document.getElementById('feedAdvanced');
-      const isOpen = adv && adv.classList.contains('show');
+    const settingsBtn = document.getElementById('btnSettings');
+    const settingsCloseBtn = document.getElementById('btnCloseSettings');
+    function toggleSettings() {
+      const panel = document.getElementById('settingsPanel');
+      const isOpen = panel && panel.classList.contains('show');
       setAdvanced(!isOpen);
-    });
+    }
+    if (settingsBtn) settingsBtn.addEventListener('click', toggleSettings);
+    if (settingsCloseBtn) settingsCloseBtn.addEventListener('click', toggleSettings);
 
     function updateMobileHeaderState(isMobile) {
       const title = document.querySelector('h1');
-      const btn = document.getElementById('btnToggleAdvanced');
-      if (!title || !btn) return;
+      if (!title) return;
       const original = title.getAttribute('data-full-title') || title.textContent;
       if (!title.getAttribute('data-full-title')) title.setAttribute('data-full-title', original);
       if (isMobile) {
         title.textContent = 'Лента';
-        btn.textContent = '...';
       } else {
         title.textContent = title.getAttribute('data-full-title') || 'Моя лента';
-        btn.textContent = '...';
       }
     }
 
     // Boot
-    window.addEventListener('resize', () => { resizeCanvas(); updateAppHeight(); updateLayoutHeights(); updateAdvancedVisibility(); });
+    window.addEventListener('resize', () => { resizeSnowCanvas(); if (snowRunning) createSnow(); updateAppHeight(); updateLayoutHeights(); updateAdvancedVisibility(); });
     window.addEventListener('load', () => {
       updateAppHeight();
       updateLayoutHeights();

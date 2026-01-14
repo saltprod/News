@@ -57,9 +57,7 @@
       bottom: 0;
       z-index: 0;
       pointer-events: none;
-      opacity: 0.15;
-      transform: translate3d(var(--tilt-x, 0px), var(--tilt-y, 0px), 0);
-      transition: transform 0.15s ease-out
+      opacity: 0.15
     }
 
     body.bg-on canvas#snowCanvas {
@@ -1428,59 +1426,216 @@
     // Snow background
     const snowCanvas = document.getElementById('snowCanvas');
     const snowCtx = snowCanvas ? snowCanvas.getContext('2d') : null;
-    let snowflakes = [];
     let snowAnimId = null;
     let snowRunning = false;
+    let snowLayers = [];
+    let snowBaseCounts = { far: 0, mid: 0, near: 0 };
+    let snowCurrentCounts = { far: 0, mid: 0, near: 0 };
+    let snowLastAdjust = 0;
+    let snowLastFpsCheck = 0;
+    let snowFrameCount = 0;
+    let snowFps = 60;
+    let snowFrameSkip = 0;
+    let snowW = 0;
+    let snowH = 0;
+    let snowDpr = 1;
+    let snowOffX = 0;
+    let snowOffY = 0;
+    let snowTargetX = 0;
+    let snowTargetY = 0;
+    let snowOrientationHandler = null;
+
+    function clamp(n, min, max) { return Math.max(min, Math.min(max, n)); }
+    function rand(min, max) { return min + Math.random() * (max - min); }
+
     function resizeSnowCanvas() {
       if (!snowCanvas) return;
-      snowCanvas.width = innerWidth;
-      snowCanvas.height = innerHeight;
+      snowDpr = Math.min(window.devicePixelRatio || 1, 2);
+      snowW = window.innerWidth;
+      snowH = window.innerHeight;
+      snowCanvas.width = Math.floor(snowW * snowDpr);
+      snowCanvas.height = Math.floor(snowH * snowDpr);
+      snowCanvas.style.width = snowW + 'px';
+      snowCanvas.style.height = snowH + 'px';
+      const area = snowW * snowH;
+      snowFrameSkip = area > 3000000 ? 2 : area > 2000000 ? 1 : 0;
+      rebuildSnow();
     }
-    function createSnow() {
-      snowflakes = [];
-      const count = Math.min(80, Math.max(40, Math.round((innerWidth * innerHeight) / 50000)));
+
+    function buildLayer(name, count, rMin, rMax, vMin, vMax, aMin, aMax, amp) {
+      const items = [];
       for (let i = 0; i < count; i++) {
-        snowflakes.push({
-          x: Math.random() * innerWidth,
-          y: Math.random() * innerHeight,
-          r: Math.random() * 1.6 + 0.6,
-          a: Math.random() * 0.6 + 0.2,
-          v: Math.random() * 0.9 + 0.3,
-          d: Math.random() * 0.6 - 0.3
-        });
+        items.push(createFlake(name, rMin, rMax, vMin, vMax, aMin, aMax, amp, true));
+      }
+      return { name, items, rMin, rMax, vMin, vMax, aMin, aMax, amp };
+    }
+
+    function createFlake(layer, rMin, rMax, vMin, vMax, aMin, aMax, amp, randomY) {
+      return {
+        layer,
+        x: Math.random() * snowW,
+        y: randomY ? Math.random() * snowH : -Math.random() * snowH * 0.2,
+        r: rand(rMin, rMax),
+        a: rand(aMin, aMax),
+        vy: rand(vMin, vMax),
+        vx: rand(-0.2, 0.2),
+        phase: Math.random() * Math.PI * 2,
+        amp
+      };
+    }
+
+    function rebuildSnow() {
+      if (!snowCanvas || !snowCtx) return;
+      const base = (snowW * snowH) / 7000;
+      snowBaseCounts = {
+        far: clamp(Math.round(base * 0.55), 120, 420),
+        mid: clamp(Math.round(base * 0.30), 70, 260),
+        near: clamp(Math.round(base * 0.15), 30, 140)
+      };
+      snowCurrentCounts = { ...snowBaseCounts };
+      snowLayers = [
+        buildLayer('far', snowCurrentCounts.far, 0.6, 1.4, 0.25, 0.7, 0.2, 0.5, 0.4),
+        buildLayer('mid', snowCurrentCounts.mid, 1.0, 2.2, 0.6, 1.3, 0.35, 0.65, 0.8),
+        buildLayer('near', snowCurrentCounts.near, 1.8, 3.4, 1.0, 2.2, 0.5, 0.85, 1.4)
+      ];
+    }
+
+    function resizeLayer(layer, targetCount) {
+      const diff = targetCount - layer.items.length;
+      if (diff > 0) {
+        for (let i = 0; i < diff; i++) {
+          layer.items.push(createFlake(layer.name, layer.rMin, layer.rMax, layer.vMin, layer.vMax, layer.aMin, layer.aMax, layer.amp, true));
+        }
+      } else if (diff < 0) {
+        layer.items.length = Math.max(0, layer.items.length + diff);
       }
     }
-    function drawSnow() {
+
+    function adjustSnowCounts(now) {
+      if (now - snowLastAdjust < 3000) return;
+      snowLastAdjust = now;
+      const reduce = (factor) => {
+        snowCurrentCounts.far = Math.max(60, Math.round(snowCurrentCounts.far * factor));
+        snowCurrentCounts.mid = Math.max(40, Math.round(snowCurrentCounts.mid * factor));
+        snowCurrentCounts.near = Math.max(20, Math.round(snowCurrentCounts.near * factor));
+      };
+      if (snowFps < 35) {
+        reduce(0.8);
+      } else if (snowFps < 45) {
+        reduce(0.8);
+      } else if (snowFps > 55 && now - snowLastFpsCheck > 5000) {
+        snowCurrentCounts.far = Math.min(snowBaseCounts.far, Math.round(snowCurrentCounts.far * 1.1));
+        snowCurrentCounts.mid = Math.min(snowBaseCounts.mid, Math.round(snowCurrentCounts.mid * 1.1));
+        snowCurrentCounts.near = Math.min(snowBaseCounts.near, Math.round(snowCurrentCounts.near * 1.1));
+      }
+      snowLayers.forEach((layer) => {
+        const target = snowCurrentCounts[layer.name];
+        resizeLayer(layer, target);
+      });
+    }
+
+    function updateFps(now) {
+      snowFrameCount += 1;
+      const elapsed = now - snowLastFpsCheck;
+      if (elapsed >= 2500) {
+        snowFps = (snowFrameCount * 1000) / elapsed;
+        snowFrameCount = 0;
+        snowLastFpsCheck = now;
+        adjustSnowCounts(now);
+      }
+    }
+
+    function updateOrientationTarget(e) {
+      const gamma = typeof e.gamma === 'number' ? e.gamma : 0;
+      const beta = typeof e.beta === 'number' ? e.beta : 0;
+      snowTargetX = clamp(gamma, -18, 18) * 0.9;
+      snowTargetY = clamp(beta, -18, 18) * 0.6;
+    }
+
+    function enableOrientation() {
+      if (!('DeviceOrientationEvent' in window)) return;
+      if (snowOrientationHandler) return;
+      snowOrientationHandler = (e) => updateOrientationTarget(e);
+      window.addEventListener('deviceorientation', snowOrientationHandler, { passive: true });
+    }
+
+    function requestOrientationPermission() {
+      if (!('DeviceOrientationEvent' in window)) return;
+      const req = DeviceOrientationEvent.requestPermission;
+      if (typeof req === 'function') {
+        req().then((res) => { if (res === 'granted') enableOrientation(); }).catch(() => { });
+      } else {
+        enableOrientation();
+      }
+    }
+
+    function drawSnow(now) {
       if (!snowRunning || !snowCtx || !snowCanvas) return;
+      if (snowFrameSkip && (snowFrameCount % (snowFrameSkip + 1)) !== 0) {
+        snowFrameCount += 1;
+        snowAnimId = requestAnimationFrame(drawSnow);
+        return;
+      }
+      updateFps(now);
+      snowOffX += (snowTargetX - snowOffX) * 0.06;
+      snowOffY += (snowTargetY - snowOffY) * 0.06;
+      snowCtx.setTransform(1, 0, 0, 1, 0, 0);
       snowCtx.clearRect(0, 0, snowCanvas.width, snowCanvas.height);
-      for (const s of snowflakes) {
-        s.y += s.v;
-        s.x += s.d;
-        if (s.y > snowCanvas.height + s.r) { s.y = -s.r; s.x = Math.random() * snowCanvas.width; }
-        if (s.x < -s.r) s.x = snowCanvas.width + s.r;
-        if (s.x > snowCanvas.width + s.r) s.x = -s.r;
-        snowCtx.globalAlpha = s.a;
-        snowCtx.fillStyle = '#e6f0ff';
-        snowCtx.beginPath();
-        snowCtx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
-        snowCtx.fill();
+      snowCtx.setTransform(snowDpr, 0, 0, snowDpr, snowOffX, snowOffY);
+      const t = now * 0.001;
+      for (const layer of snowLayers) {
+        for (const f of layer.items) {
+          const sway = Math.sin(t + f.phase) * f.amp;
+          f.y += f.vy;
+          f.x += f.vx + sway;
+          if (f.y > snowH + f.r) {
+            f.y = -f.r;
+            f.x = Math.random() * snowW;
+            f.vy = rand(layer.vMin, layer.vMax);
+          }
+          if (f.x < -f.r) f.x = snowW + f.r;
+          if (f.x > snowW + f.r) f.x = -f.r;
+          snowCtx.globalAlpha = f.a;
+          snowCtx.fillStyle = 'rgba(230, 240, 255, 1)';
+          snowCtx.beginPath();
+          snowCtx.arc(f.x, f.y, f.r, 0, Math.PI * 2);
+          snowCtx.fill();
+          if (layer.name === 'near') {
+            snowCtx.globalAlpha = f.a * 0.25;
+            snowCtx.beginPath();
+            snowCtx.arc(f.x, f.y, f.r * 2.1, 0, Math.PI * 2);
+            snowCtx.fill();
+          }
+        }
       }
       snowCtx.globalAlpha = 1;
       snowAnimId = requestAnimationFrame(drawSnow);
     }
+
     function startSnow() {
       if (!snowCanvas || !snowCtx) return;
       snowRunning = true;
       resizeSnowCanvas();
-      createSnow();
       if (snowAnimId) cancelAnimationFrame(snowAnimId);
-      drawSnow();
+      snowLastFpsCheck = performance.now();
+      snowFrameCount = 0;
+      requestOrientationPermission();
+      snowAnimId = requestAnimationFrame(drawSnow);
     }
+
     function stopSnow() {
       snowRunning = false;
       if (snowAnimId) cancelAnimationFrame(snowAnimId);
       snowAnimId = null;
       if (snowCtx && snowCanvas) snowCtx.clearRect(0, 0, snowCanvas.width, snowCanvas.height);
+      if (snowOrientationHandler) {
+        window.removeEventListener('deviceorientation', snowOrientationHandler);
+        snowOrientationHandler = null;
+      }
+      snowTargetX = 0;
+      snowTargetY = 0;
+      snowOffX = 0;
+      snowOffY = 0;
     }
     const DEBUG_LAYOUT = false;
     function updateViewportVars() {
@@ -1591,17 +1746,6 @@
         }
       } catch (e) { }
     }
-    function initOrientation() {
-      if (!('DeviceOrientationEvent' in window)) return;
-      window.addEventListener('deviceorientation', (e) => {
-        const gamma = typeof e.gamma === 'number' ? e.gamma : 0;
-        const beta = typeof e.beta === 'number' ? e.beta : 0;
-        const tx = Math.max(-6, Math.min(6, gamma / 6));
-        const ty = Math.max(-6, Math.min(6, beta / 9));
-        document.documentElement.style.setProperty('--tilt-x', `${tx}px`);
-        document.documentElement.style.setProperty('--tilt-y', `${ty}px`);
-      }, { passive: true });
-    }
     function updateAdvancedVisibility() {
       const adv = document.getElementById('feedAdvanced');
       const btn = document.getElementById('btnToggleAdvanced');
@@ -1690,7 +1834,6 @@
       if (tg && typeof tg.onEvent === 'function') tg.onEvent('themeChanged', applyTelegramTheme);
       if (tg) applyTelegramTheme(); else applyTheme();
       initLocation();
-      initOrientation();
       // populate source selector and restore selection
       try { loadSources(); } catch (e) { console.warn('loadSources failed', e); }
       // restore cached data

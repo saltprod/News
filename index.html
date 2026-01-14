@@ -24,7 +24,7 @@
       --bottom-h: 64px;
       --safe-top: env(safe-area-inset-top);
       --safe-bottom: env(safe-area-inset-bottom);
-      --app-h: 100vh;
+      --app-h: 100%;
     }
 
     html,
@@ -44,11 +44,6 @@
       height: var(--app-h);
     }
 
-    @supports (height: 100dvh) {
-      :root {
-        --app-h: 100dvh
-      }
-    }
 
     canvas#snowCanvas {
       position: fixed;
@@ -1221,8 +1216,18 @@
       if (snowCtx && snowCanvas) snowCtx.clearRect(0, 0, snowCanvas.width, snowCanvas.height);
     }
     const DEBUG_LAYOUT = false;
-    function updateAppHeight() {
-      document.documentElement.style.setProperty('--app-h', window.innerHeight + 'px');
+    function updateViewportVars() {
+      const tg = (window.Telegram && Telegram.WebApp) ? Telegram.WebApp : null;
+      const appH = tg && typeof tg.viewportStableHeight === 'number' && tg.viewportStableHeight > 0
+        ? tg.viewportStableHeight
+        : window.innerHeight;
+      document.documentElement.style.setProperty('--app-h', appH + 'px');
+      if (tg && tg.safeAreaInset) {
+        const safeTop = typeof tg.safeAreaInset.top === 'number' ? tg.safeAreaInset.top : 0;
+        const safeBottom = typeof tg.safeAreaInset.bottom === 'number' ? tg.safeAreaInset.bottom : 0;
+        document.documentElement.style.setProperty('--safe-top', safeTop + 'px');
+        document.documentElement.style.setProperty('--safe-bottom', safeBottom + 'px');
+      }
     }
     function updateLayoutHeights() {
       const header = document.querySelector('header');
@@ -1344,7 +1349,7 @@
     function handleViewportChange() {
       resizeSnowCanvas();
       if (snowRunning) createSnow();
-      updateAppHeight();
+      updateViewportVars();
       updateLayoutHeights();
       updateAdvancedVisibility();
       if (menuPopover && menuPopover.style.display === 'block') positionMenu();
@@ -1352,7 +1357,10 @@
     window.addEventListener('resize', handleViewportChange);
     window.addEventListener('orientationchange', handleViewportChange);
     window.addEventListener('load', () => {
-      updateAppHeight();
+      updateViewportVars();
+      if (window.Telegram && Telegram.WebApp && typeof Telegram.WebApp.onEvent === 'function') {
+        Telegram.WebApp.onEvent('viewportChanged', handleViewportChange);
+      }
       updateLayoutHeights();
       applyTheme();
       // populate source selector and restore selection

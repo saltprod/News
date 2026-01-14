@@ -58,6 +58,7 @@
       pointer-events: none;
       opacity: 0.15
     }
+
     body.bg-on canvas#snowCanvas {
       opacity: 0.55
     }
@@ -76,26 +77,26 @@
 
     /* make header fixed so it stays visible in Telegram WebView */
     header {
-      position: static;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: transparent;
+    }
+
+    header::before {
+      content: "";
+      position: absolute;
       left: 0;
       right: 0;
-      z-index: 60;
-      isolation: isolate;
-      background: rgba(10, 14, 24, 0.45);
-      padding: env(safe-area-inset-top) 12px 6px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+      top: -100px;
+      /* ← подними заливку выше кнопок */
+      bottom: -10px;
+      background: rgba(10, 14, 24, 0.35);
       backdrop-filter: blur(14px) saturate(120%);
-      -webkit-backdrop-filter: blur(14px) saturate(120%)
-    }
-    header::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: inherit;
-      backdrop-filter: inherit;
-      -webkit-backdrop-filter: inherit;
-      z-index: -1
+      -webkit-backdrop-filter: blur(14px) saturate(120%);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      z-index: -1;
+      /* фон под кнопками */
     }
 
     main {
@@ -138,15 +139,18 @@
       background: rgba(255, 255, 255, 0.06);
       border: 1px solid rgba(255, 255, 255, 0.08)
     }
+
     .iconBtn:hover,
     .iconBtn:active {
       background: rgba(255, 255, 255, 0.1)
     }
+
     .iconBtn.active {
       background: rgba(var(--accent-rgb), 0.2);
       border: 1px solid rgba(var(--accent-rgb), 0.35)
     }
 
+    .source-btn,
     .source-select.compact {
       min-width: 0;
       width: 100%;
@@ -167,6 +171,20 @@
       background-position: calc(100% - 14px) 12px, calc(100% - 9px) 12px;
       background-size: 5px 5px, 5px 5px;
       background-repeat: no-repeat
+    }
+
+    .source-btn {
+      text-align: left;
+      cursor: pointer;
+      line-height: 30px
+    }
+
+    .source-select.source-hidden {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      opacity: 0;
+      pointer-events: none
     }
 
     .menu-backdrop {
@@ -202,6 +220,45 @@
       color: var(--muted)
     }
 
+    .source-menu-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.35);
+      z-index: 85;
+      display: none
+    }
+
+    .source-menu {
+      position: fixed;
+      z-index: 96;
+      background: rgba(10, 14, 24, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+      padding: 8px;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+      max-height: 55vh;
+      overflow: auto;
+      display: none;
+      backdrop-filter: blur(14px) saturate(120%);
+      -webkit-backdrop-filter: blur(14px) saturate(120%)
+    }
+
+    .source-item {
+      width: 100%;
+      text-align: left;
+      padding: 8px 10px;
+      background: transparent;
+      border: 0;
+      color: var(--text);
+      font-size: 12px;
+      border-radius: 10px;
+      cursor: pointer
+    }
+
+    .source-item.active {
+      background: rgba(255, 255, 255, 0.08)
+    }
+
     h1 {
       font-size: 20px;
       margin: 0;
@@ -213,6 +270,7 @@
       align-items: center;
       gap: 12px
     }
+
     .title-actions {
       display: flex;
       gap: 8px;
@@ -572,11 +630,13 @@
       font-size: 12px;
       color: var(--muted)
     }
+
     .bg-toggle-wrap {
       display: flex;
       gap: 8px;
       align-items: center
     }
+
     .feed-advanced {
       margin-top: 12px;
       background: var(--surface-2);
@@ -589,9 +649,11 @@
       align-items: center;
       flex-wrap: wrap
     }
+
     .feed-advanced.show {
       display: flex
     }
+
     .feed-advanced .input,
     .feed-advanced .btn {
       min-height: 36px;
@@ -686,14 +748,17 @@
       .input {
         min-height: 44px
       }
+
       .bg-toggle-wrap {
         min-height: 44px
       }
+
       .toggle {
         width: 38px;
         height: 22px;
         padding: 3px
       }
+
       .toggle .dot {
         width: 14px;
         height: 14px
@@ -705,12 +770,15 @@
         font-size: 14px;
         border-radius: 11px
       }
+
       .hdrRow {
         column-gap: 8px
       }
+
       .source-select.compact {
         max-width: 180px
       }
+
       .feed-advanced {
         padding: 8px
       }
@@ -725,10 +793,11 @@
     <header>
       <div class="hdrRow">
         <button id="btnClose" class="btn ghost iconBtn" aria-label="Назад">←</button>
-        <select id="sourceSelect" class="source-select compact" aria-label="Выбор источника"></select>
+        <button id="sourceBtn" class="source-btn" aria-haspopup="true" aria-expanded="false">Источник: ...</button>
         <button id="btnFavFilter" class="btn ghost iconBtn" aria-pressed="false" aria-label="Избранные">⭐</button>
         <button id="btnMenu" class="btn ghost iconBtn" aria-label="Меню">⋯</button>
       </div>
+      <select id="sourceSelect" class="source-select compact source-hidden" aria-hidden="true" tabindex="-1"></select>
     </header>
     <main>
       <div id="feedAdvanced" class="feed-advanced">
@@ -737,7 +806,8 @@
         <button id="btnLoad" class="btn">Загрузить</button>
       </div>
       <div id="news" class="news-list"></div>
-      <div id="emptyState" class="empty" style="display:none">Пока ничего нет. Попробуйте выбрать другой источник или изменить поиск.</div>
+      <div id="emptyState" class="empty" style="display:none">Пока ничего нет. Попробуйте выбрать другой источник или
+        изменить поиск.</div>
     </main>
 
     <div class="bottom-bar">
@@ -774,6 +844,8 @@
       <button id="btnToggleAdvanced" class="btn ghost small" aria-pressed="false">Скрыта</button>
     </div>
   </div>
+  <div id="sourceMenuBackdrop" class="source-menu-backdrop"></div>
+  <div id="sourceMenu" class="source-menu" role="menu" aria-hidden="true"></div>
 
   <script>
     // Minimal Telegram.WebApp shim for local testing
@@ -824,6 +896,76 @@
       { id: 'bbc-world', name: 'BBC World', url: 'rss:https://feeds.bbci.co.uk/news/world/rss.xml' }
     ];
 
+    function updateSourceButton(id) {
+      const btn = document.getElementById('sourceBtn');
+      const src = SOURCES.find(s => s.id === id);
+      if (btn) btn.textContent = `Источник: ${src ? src.name : '...'}`;
+    }
+    function updateSourceMenuActive(id) {
+      const items = document.querySelectorAll('#sourceMenu .source-item');
+      items.forEach(it => {
+        it.classList.toggle('active', it.dataset.id === id);
+      });
+    }
+    function buildSourceMenu() {
+      const menu = document.getElementById('sourceMenu');
+      if (!menu) return;
+      menu.innerHTML = '';
+      SOURCES.forEach(s => {
+        const item = document.createElement('button');
+        item.type = 'button';
+        item.className = 'source-item';
+        item.dataset.id = s.id;
+        item.textContent = s.name;
+        item.addEventListener('click', () => {
+          closeSourceMenu();
+          setSourceById(s.id);
+        });
+        menu.appendChild(item);
+      });
+    }
+    function openSourceMenu() {
+      const btn = document.getElementById('sourceBtn');
+      const menu = document.getElementById('sourceMenu');
+      const backdrop = document.getElementById('sourceMenuBackdrop');
+      if (!btn || !menu || !backdrop) return;
+      const isOpen = menu.style.display === 'block';
+      if (isOpen) { closeSourceMenu(); return; }
+      menu.style.display = 'block';
+      menu.setAttribute('aria-hidden', 'false');
+      backdrop.style.display = 'block';
+      const rect = btn.getBoundingClientRect();
+      const pad = 8;
+      const maxH = Math.min(window.innerHeight * 0.55, 420);
+      menu.style.maxHeight = `${maxH}px`;
+      const width = menu.offsetWidth || 240;
+      let left = rect.left;
+      if (left + width > window.innerWidth - pad) left = window.innerWidth - width - pad;
+      let top = rect.bottom + pad;
+      if (top + menu.offsetHeight > window.innerHeight - pad) top = rect.top - menu.offsetHeight - pad;
+      if (top < pad) top = pad;
+      menu.style.left = `${left}px`;
+      menu.style.top = `${top}px`;
+      const saved = localStorage.getItem(LS_SRC);
+      updateSourceMenuActive(saved);
+      btn.setAttribute('aria-expanded', 'true');
+    }
+    function closeSourceMenu() {
+      const menu = document.getElementById('sourceMenu');
+      const backdrop = document.getElementById('sourceMenuBackdrop');
+      const btn = document.getElementById('sourceBtn');
+      if (menu) { menu.style.display = 'none'; menu.setAttribute('aria-hidden', 'true'); }
+      if (backdrop) backdrop.style.display = 'none';
+      if (btn) btn.setAttribute('aria-expanded', 'false');
+    }
+    function setSourceById(id) {
+      const sel = document.getElementById('sourceSelect');
+      if (sel) sel.value = id;
+      updateSourceButton(id);
+      updateSourceMenuActive(id);
+      if (id) loadNewsById(id);
+    }
+
     // Populate the source selector and wire persistence
     function loadSources() {
       const sel = document.getElementById('sourceSelect'); if (!sel) return;
@@ -833,15 +975,11 @@
       // restore selection
       const saved = localStorage.getItem(LS_SRC);
       if (saved) { sel.value = saved; const src = SOURCES.find(x => x.id === saved); if (src) { fetchUrl = src.url; document.getElementById('inputFeed').value = fetchUrl; } }
+      updateSourceButton(saved || '');
+      buildSourceMenu();
       sel.addEventListener('change', (e) => {
         const id = e.target.value; if (!id) return;
-        localStorage.setItem(LS_SRC, id);
-        const src = SOURCES.find(x => x.id === id);
-        if (src) {
-          // clear current list immediately for UX, then load new source
-          news = []; displayedCount = PAGE_SIZE; renderNews();
-          fetchUrl = src.url; document.getElementById('inputFeed').value = fetchUrl; loadNews(src.url);
-        }
+        setSourceById(id);
       });
       // selection change already triggers load; no top reload button present
     }
@@ -1029,7 +1167,7 @@
         const tpl = document.getElementById('cardTpl');
         const node = tpl.content.firstElementChild.cloneNode(true);
         node.querySelector('.ttl').textContent = it.title;
-        node.querySelector('.desc').textContent = it.summary ? (it.summary.replace(/<[^>]+>/g, '')) : '';
+        node.querySelector('.desc').textContent = extractDetailText(it);
         node.querySelector('.source').textContent = it.source || '';
         node.querySelector('.time').textContent = formatTime(it.date);
         const favBtn = node.querySelector('.btnFav');
@@ -1183,11 +1321,12 @@
       t.innerHTML = s;
       return t.value;
     }
+    function decodeEntities(s) { return decodeHtmlEntities(s); }
     function stripTags(s) { return (s || '').replace(/<[^>]*>/g, ' '); }
     function normalizeSpaces(s) { return (s || '').replace(/\s+/g, ' ').trim(); }
     function extractDetailText(it) {
       const raw = (it.summary || it.content || it.description || '') + '';
-      const decoded = decodeHtmlEntities(raw);
+      const decoded = decodeEntities(raw);
       const stripped = stripTags(decoded);
       return normalizeSpaces(stripped);
     }
@@ -1303,9 +1442,15 @@
       favFilterOn = !favFilterOn;
       favFilterBtn.classList.toggle('active', favFilterOn);
       favFilterBtn.setAttribute('aria-pressed', favFilterOn ? 'true' : 'false');
+      favFilterBtn.classList.toggle('iconBtn', true);
       displayedCount = PAGE_SIZE;
       renderNews();
     });
+    const sourceBtn = document.getElementById('sourceBtn');
+    const sourceBackdrop = document.getElementById('sourceMenuBackdrop');
+    if (sourceBtn) sourceBtn.addEventListener('click', (e) => { e.stopPropagation(); openSourceMenu(); });
+    if (sourceBackdrop) sourceBackdrop.addEventListener('click', closeSourceMenu);
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeSourceMenu(); });
     // Load more button
     const loadMoreBtn = document.getElementById('btnLoadMore'); if (loadMoreBtn) { loadMoreBtn.addEventListener('click', () => { const list = getFilteredNews(); if (!list || !list.length) return; displayedCount = displayedCount + PAGE_SIZE; renderNews(); }); }
 
@@ -1419,4 +1564,3 @@
 </body>
 
 </html>
-

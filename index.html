@@ -88,7 +88,7 @@
     main {
       height: calc(var(--app-h) - var(--header-h) - var(--bottom-h));
       overflow: auto;
-      padding: calc(var(--header-h) + 12px) 18px calc(16px + var(--safe-bottom));
+      padding: var(--header-h) 18px calc(16px + var(--safe-bottom));
       -webkit-overflow-scrolling: touch;
       overscroll-behavior: contain
     }
@@ -408,7 +408,7 @@
       border-radius: 16px;
       max-width: 820px;
       width: 94%;
-      max-height: calc(var(--app-h) * 0.92);
+      max-height: calc(var(--app-h) - var(--safe-top) - var(--safe-bottom) - 16px);
       box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
       color: var(--text);
       position: relative;
@@ -431,7 +431,8 @@
     .modal-body {
       overflow: auto;
       -webkit-overflow-scrolling: touch;
-      max-height: calc(var(--app-h) * 0.92 - 70px)
+      max-height: calc(var(--app-h) - var(--safe-top) - var(--safe-bottom) - 140px);
+      overscroll-behavior: contain
     }
 
     .modal-actions {
@@ -439,12 +440,26 @@
       bottom: 0;
       background: var(--surface);
       padding-top: 10px;
+      padding-bottom: calc(8px + var(--safe-bottom));
       margin-top: 12px;
       display: flex;
       gap: 8px;
       align-items: center;
-      flex-wrap: wrap;
+      flex-wrap: nowrap;
+      overflow-x: auto;
       border-top: 1px solid var(--border)
+    }
+
+    .btn.compact {
+      padding: 6px 10px;
+      font-size: 12px;
+      min-height: 44px
+    }
+
+    .lang-select.compact {
+      padding: 6px 8px;
+      font-size: 12px;
+      min-height: 44px
     }
 
     .translate-row {
@@ -855,6 +870,8 @@
         id: it.id || it.guid || 'rss-' + i,
         title: it.title || it.name || 'Без названия',
         summary: it.summary || it.description || it.excerpt || '',
+        description: it.description || '',
+        content: it.content || it['content:encoded'] || it.content_encoded || it.encoded || '',
         link: it.link || it.url || '#',
         source: it.source || it.feed || 'RSS',
         date: it.date || it.pubDate || it.published || ''
@@ -889,6 +906,8 @@
             id: it.id || it.guid || 'j-' + i,
             title: it.title || it.name || 'Без названия',
             summary: it.summary || it.description || it.excerpt || '',
+            description: it.description || '',
+            content: it.content || it['content:encoded'] || it.content_encoded || it.encoded || '',
             link: it.url || it.link || '#',
             source: it.source || it.feed || 'JSON',
             date: it.date || it.published_at || it.pubDate || it.time || ''
@@ -964,7 +983,7 @@
       const empty = document.getElementById('emptyState');
       if (empty) empty.style.display = list.length ? 'none' : 'block';
       const frag = document.createDocumentFragment();
-      list.forEach(it => {
+      list.forEach((it, idx) => {
         const tpl = document.getElementById('cardTpl');
         const node = tpl.content.firstElementChild.cloneNode(true);
         node.querySelector('.ttl').textContent = it.title;
@@ -974,7 +993,7 @@
         const favBtn = node.querySelector('.btnFav');
         favBtn.textContent = favs.has(it.id) ? '★' : '☆';
         favBtn.addEventListener('click', (ev) => { ev.stopPropagation(); toggleFav(it.id); favBtn.textContent = favs.has(it.id) ? '★' : '☆'; renderNews(); });
-        node.addEventListener('click', (ev) => { if (ev.ctrlKey || ev.metaKey) { window.open(it.link, '_blank'); } else openDetail(it); });
+        node.addEventListener('click', (ev) => { if (ev.ctrlKey || ev.metaKey) { window.open(it.link, '_blank'); } else openDetail(it, idx, list); });
         frag.appendChild(node);
       });
       root.appendChild(frag);
@@ -989,60 +1008,85 @@
     }
 
     // Modal
-    function openDetail(it) {
+    let currentDetailItems = [];
+    let currentDetailIndex = 0;
+    function openDetail(it, index = 0, items = null) {
+      currentDetailItems = Array.isArray(items) ? items : getFilteredNews().slice(0, displayedCount);
+      currentDetailIndex = Math.max(0, Math.min(index, currentDetailItems.length - 1));
       const root = $('#modalRoot'); root.style.display = 'flex'; root.innerHTML = '';
       const back = document.createElement('div'); back.className = 'modal-backdrop';
       const modal = document.createElement('div'); modal.className = 'modal';
-      const timeLabel = formatTime(it.date);
-      modal.innerHTML = `<button class="close">✖</button><div class="modal-body"><h3>${escapeHtml(it.title)}</h3><div style="color:var(--muted);font-size:12px;margin-top:6px">${escapeHtml(it.source || '')}${timeLabel ? ' · ' + timeLabel : ''}</div><div style="color:var(--muted);font-size:13px;margin-top:8px" id="modalSummary">${escapeHtml(it.summary || '')}</div><div id="translatedBlock" class="translate-output" style="display:none"></div></div><div class="modal-actions"><div id="translateSlot"></div><a id="openLink" class="btn" target="_blank">Открыть</a></div>`;
+      modal.innerHTML = `<button class="close">✖</button><div class="modal-body"><h3 id="modalTitle"></h3><div style="color:var(--muted);font-size:12px;margin-top:6px" id="modalMeta"></div><div style="color:var(--muted);font-size:13px;margin-top:8px" id="modalSummary"></div><div id="translatedBlock" class="translate-output" style="display:none"></div></div><div class="modal-actions"><button id="btnPrev" class="btn ghost small">◀︎</button><button id="btnNext" class="btn ghost small">▶︎</button><button id="btnTranslate" class="btn compact">🌐 Перевести</button><select id="translateLang" class="lang-select compact" aria-label="Язык перевода"><option value="ru">RU</option><option value="en">EN</option></select><a id="openLink" class="btn ghost compact" target="_blank">Открыть</a></div>`;
       back.appendChild(modal); root.appendChild(back);
       back.addEventListener('click', (e) => { if (e.target === back) closeDetail(); });
       modal.querySelector('.close').addEventListener('click', closeDetail);
-      const openLink = modal.querySelector('#openLink'); openLink.href = it.link; openLink.textContent = 'Открыть источник';
-      const translateSlot = modal.querySelector('#translateSlot');
+      const titleEl = modal.querySelector('#modalTitle');
+      const metaEl = modal.querySelector('#modalMeta');
+      const summaryEl = modal.querySelector('#modalSummary');
       const translatedBlock = modal.querySelector('#translatedBlock');
-      if (translateSlot && translatedBlock) {
-        const translateRow = document.createElement('div');
-        translateRow.className = 'translate-row';
-        const translateBtn = document.createElement('button');
-        translateBtn.id = 'btnTranslate';
-        translateBtn.className = 'btn';
-        translateBtn.textContent = '\uD83C\uDF10 Перевести';
-        const openBtn = document.createElement('button');
-        openBtn.id = 'btnTranslateOpen';
-        openBtn.className = 'btn ghost';
-        openBtn.textContent = '↗ Перевести (открыть)';
-        const langSel = document.createElement('select');
-        langSel.id = 'translateLang';
-        langSel.className = 'lang-select';
-        langSel.setAttribute('aria-label', 'Язык перевода');
-        const optRu = document.createElement('option'); optRu.value = 'ru'; optRu.textContent = 'RU';
-        const optEn = document.createElement('option'); optEn.value = 'en'; optEn.textContent = 'EN';
-        langSel.appendChild(optRu); langSel.appendChild(optEn);
-        translateRow.appendChild(translateBtn);
-        translateRow.appendChild(openBtn);
-        translateRow.appendChild(langSel);
-        translateSlot.appendChild(translateRow);
-        openBtn.addEventListener('click', () => {
-          const target = langSel.value || 'ru';
-          const rawText = (it.summary && it.summary.trim()) ? it.summary.trim() : (it.title || '').trim();
-          if (!rawText) return;
-          const text = rawText.slice(0, 1800);
-          const url = `https://translate.google.com/?sl=auto&tl=${encodeURIComponent(target)}&text=${encodeURIComponent(text)}&op=translate`;
-          window.open(url, '_blank');
-        });
+      const openLink = modal.querySelector('#openLink');
+      const translateBtn = modal.querySelector('#btnTranslate');
+      const langSel = modal.querySelector('#translateLang');
+      const prevBtn = modal.querySelector('#btnPrev');
+      const nextBtn = modal.querySelector('#btnNext');
+      let currentText = '';
+      function updateNavButtons() {
+        if (prevBtn) prevBtn.disabled = currentDetailIndex <= 0;
+        if (nextBtn) nextBtn.disabled = currentDetailIndex >= currentDetailItems.length - 1;
+      }
+      function applyDetail(item) {
+        const timeLabel = formatTime(item.date);
+        if (titleEl) titleEl.textContent = item.title || '';
+        if (metaEl) metaEl.textContent = `${item.source || ''}${timeLabel ? ' · ' + timeLabel : ''}`;
+        currentText = extractDetailText(item);
+        if (!currentText) currentText = (item.title || '').trim();
+        if (summaryEl) summaryEl.textContent = currentText;
+        if (openLink) { openLink.href = item.link || '#'; openLink.textContent = 'Открыть источник'; }
+        if (translatedBlock) { translatedBlock.style.display = 'none'; translatedBlock.textContent = ''; }
+        if (translateBtn) { translateBtn.textContent = '🌐 Перевести'; translateBtn.disabled = false; }
+        updateNavButtons();
+      }
+      function goToIndex(nextIndex) {
+        if (!currentDetailItems.length) return;
+        currentDetailIndex = Math.max(0, Math.min(nextIndex, currentDetailItems.length - 1));
+        applyDetail(currentDetailItems[currentDetailIndex]);
+      }
+      if (prevBtn) prevBtn.addEventListener('click', () => goToIndex(currentDetailIndex - 1));
+      if (nextBtn) nextBtn.addEventListener('click', () => goToIndex(currentDetailIndex + 1));
+      const bodyEl = modal.querySelector('.modal-body');
+      if (bodyEl) {
+        let startX = 0; let startY = 0; let tracking = false;
+        bodyEl.addEventListener('touchstart', (e) => {
+          if (e.touches.length !== 1) return;
+          tracking = true;
+          startX = e.touches[0].clientX;
+          startY = e.touches[0].clientY;
+        }, { passive: true });
+        bodyEl.addEventListener('touchend', (e) => {
+          if (!tracking) return;
+          tracking = false;
+          const t = e.changedTouches[0];
+          const dx = t.clientX - startX;
+          const dy = t.clientY - startY;
+          if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)) {
+            if (dx < 0) goToIndex(currentDetailIndex + 1);
+            else goToIndex(currentDetailIndex - 1);
+          }
+        }, { passive: true });
+      }
+      if (translateBtn && translatedBlock) {
         translateBtn.addEventListener('click', async () => {
-          const target = langSel.value || 'ru';
-          const text = (it.summary && it.summary.trim()) ? it.summary.trim() : (it.title || '').trim();
+          const target = (langSel && langSel.value) ? langSel.value : 'ru';
+          const text = currentText || '';
           if (!text) return;
-          const key = `${it.id}|${target}`;
+          const key = `${currentDetailItems[currentDetailIndex].id}|${target}`;
           const cached = translations[key];
           if (cached) {
             translatedBlock.style.display = 'block';
             translatedBlock.innerHTML = escapeHtml(cached);
             translateBtn.textContent = 'Готово';
             translateBtn.disabled = true;
-            setTimeout(() => { translateBtn.textContent = '\uD83C\uDF10 Перевести'; translateBtn.disabled = false; }, 1200);
+            setTimeout(() => { translateBtn.textContent = '🌐 Перевести'; translateBtn.disabled = false; }, 1200);
             return;
           }
           translateBtn.textContent = 'Перевод...';
@@ -1054,18 +1098,18 @@
             translatedBlock.style.display = 'block';
             translatedBlock.innerHTML = escapeHtml(translated || '');
             translateBtn.textContent = 'Готово';
-            setTimeout(() => { translateBtn.textContent = '\uD83C\uDF10 Перевести'; translateBtn.disabled = false; }, 1200);
+            setTimeout(() => { translateBtn.textContent = '🌐 Перевести'; translateBtn.disabled = false; }, 1200);
           } catch (err) {
             console.error('translate failed', err);
             translatedBlock.style.display = 'block';
             translatedBlock.innerHTML = escapeHtml('Перевод временно недоступен');
             translateBtn.textContent = 'Ошибка перевода';
-            setTimeout(() => { translateBtn.textContent = '\uD83C\uDF10 Перевести'; translateBtn.disabled = false; }, 1500);
+            setTimeout(() => { translateBtn.textContent = '🌐 Перевести'; translateBtn.disabled = false; }, 1500);
           }
         });
       }
+      applyDetail(currentDetailItems[currentDetailIndex] || it);
     }
-
     function closeDetail() { const root = $('#modalRoot'); root.style.display = 'none'; root.innerHTML = ''; }
 
     // Translation cache
@@ -1091,6 +1135,20 @@
 
     // Simple escaping
     function escapeHtml(s) { if (!s) return ''; return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+    function decodeHtmlEntities(s) {
+      if (!s) return '';
+      const t = document.createElement('textarea');
+      t.innerHTML = s;
+      return t.value;
+    }
+    function stripTags(s) { return (s || '').replace(/<[^>]*>/g, ' '); }
+    function normalizeSpaces(s) { return (s || '').replace(/\s+/g, ' ').trim(); }
+    function extractDetailText(it) {
+      const raw = (it.summary || it.content || it.description || '') + '';
+      const decoded = decodeHtmlEntities(raw);
+      const stripped = stripTags(decoded);
+      return normalizeSpaces(stripped);
+    }
 
     // Snow background
     const snowCanvas = document.getElementById('snowCanvas');
@@ -1149,12 +1207,28 @@
       snowAnimId = null;
       if (snowCtx && snowCanvas) snowCtx.clearRect(0, 0, snowCanvas.width, snowCanvas.height);
     }
-    function updateAppHeight() { document.documentElement.style.setProperty('--app-h', window.innerHeight + 'px'); }
+    const DEBUG_LAYOUT = false;
+    function updateAppHeight() {
+      document.documentElement.style.setProperty('--app-h', window.innerHeight + 'px');
+    }
     function updateLayoutHeights() {
       const header = document.querySelector('header');
       const bottom = document.querySelector('.bottom-bar');
+      const styles = getComputedStyle(document.documentElement);
+      const safeBottom = parseFloat(styles.getPropertyValue('--safe-bottom')) || 0;
       if (header) document.documentElement.style.setProperty('--header-h', header.offsetHeight + 'px');
-      if (bottom) document.documentElement.style.setProperty('--bottom-h', bottom.offsetHeight + 'px');
+      if (bottom) document.documentElement.style.setProperty('--bottom-h', (bottom.offsetHeight + safeBottom) + 'px');
+      if (DEBUG_LAYOUT) {
+        const safeTop = parseFloat(styles.getPropertyValue('--safe-top')) || 0;
+        const appH = styles.getPropertyValue('--app-h');
+        console.log('[layout]', {
+          appH,
+          safeTop,
+          safeBottom,
+          headerH: header ? header.offsetHeight : 0,
+          bottomH: bottom ? bottom.offsetHeight : 0
+        });
+      }
     }
 
     // Theme & UI init
@@ -1261,14 +1335,16 @@
     }
 
     // Boot
-    window.addEventListener('resize', () => {
+    function handleViewportChange() {
       resizeSnowCanvas();
       if (snowRunning) createSnow();
       updateAppHeight();
       updateLayoutHeights();
       updateAdvancedVisibility();
       if (menuPopover && menuPopover.style.display === 'block') positionMenu();
-    });
+    }
+    window.addEventListener('resize', handleViewportChange);
+    window.addEventListener('orientationchange', handleViewportChange);
     window.addEventListener('load', () => {
       updateAppHeight();
       updateLayoutHeights();
@@ -1292,5 +1368,4 @@
 </body>
 
 </html>
-
 

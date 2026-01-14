@@ -508,24 +508,41 @@
 
     @media (max-width:520px) {
       :root {
-        --header-h: 132px
+        --header-h: 116px
       }
 
       header {
-        padding: 10px 12px 8px
+        padding: 8px 10px 6px
+      }
+
+      .title-row {
+        flex-direction: row;
+        align-items: center
       }
 
       h1 {
-        font-size: 16px
+        font-size: 14px
       }
 
       .user {
-        font-size: 12px
+        font-size: 11px;
+        opacity: 0.8
+      }
+
+      .stats {
+        gap: 6px;
+        margin-top: 6px
+      }
+
+      .stat-pill,
+      .status-pill {
+        font-size: 10px;
+        padding: 4px 6px
       }
 
       .source-select {
         min-height: 36px;
-        padding: 6px 8px
+        padding: 4px 8px
       }
 
       .btn,
@@ -692,7 +709,7 @@
         const src = SOURCES.find(x => x.id === id);
         if (src) {
           // clear current list immediately for UX, then load new source
-          news = []; displayedCount = 0; renderNews();
+          news = []; displayedCount = PAGE_SIZE; renderNews();
           fetchUrl = src.url; document.getElementById('inputFeed').value = fetchUrl; loadNews(src.url);
         }
       });
@@ -703,7 +720,7 @@
     function loadNewsById(sourceId) {
       const src = SOURCES.find(s => s.id === sourceId);
       if (!src) { setStatus('Источник не найден'); return; }
-      try { localStorage.setItem(LS_SRC, sourceId); fetchUrl = src.url; document.getElementById('inputFeed').value = fetchUrl; news = []; displayedCount = 0; renderNews(); loadNews(src.url); }
+      try { localStorage.setItem(LS_SRC, sourceId); fetchUrl = src.url; document.getElementById('inputFeed').value = fetchUrl; news = []; displayedCount = PAGE_SIZE; renderNews(); loadNews(src.url); }
       catch (e) { console.error('loadNewsById', e); setStatus('Ошибка при загрузке источника'); }
     }
 
@@ -890,7 +907,12 @@
       root.appendChild(frag);
       // toggle Load more button
       const moreBtn = document.getElementById('btnLoadMore');
-      if (moreBtn) moreBtn.disabled = displayedCount >= getFilteredNews().length;
+      if (moreBtn) {
+        const hasMore = displayedCount < filtered.length;
+        moreBtn.disabled = !hasMore;
+        moreBtn.style.display = hasMore ? 'block' : 'none';
+        if (hasMore) moreBtn.textContent = 'Загрузить еще';
+      }
     }
 
     // Modal
@@ -1024,16 +1046,17 @@
       renderNews();
     });
     // Load more button
-    const loadMoreBtn = document.getElementById('btnLoadMore'); if (loadMoreBtn) { loadMoreBtn.addEventListener('click', () => { const list = getFilteredNews(); if (!list || !list.length) return; displayedCount = Math.min(list.length, displayedCount + PAGE_SIZE); renderNews(); }); }
+    const loadMoreBtn = document.getElementById('btnLoadMore'); if (loadMoreBtn) { loadMoreBtn.addEventListener('click', () => { const list = getFilteredNews(); if (!list || !list.length) return; displayedCount = displayedCount + PAGE_SIZE; renderNews(); }); }
 
     function updateBgToggle() { const on = localStorage.getItem(LS_BG) !== '0'; const el = document.getElementById('bgToggle'); if (el) el.classList.toggle('on', on); if (on) { resizeCanvas(); createStars(); drawBg(); } }
     function updateAdvancedVisibility() {
       const adv = document.getElementById('feedAdvanced');
       if (!adv) return;
       const isMobile = window.matchMedia('(max-width: 520px)').matches;
-      if (!isMobile) { adv.classList.add('show'); return; }
+      if (!isMobile) { adv.classList.add('show'); updateMobileHeaderState(false); return; }
       const saved = localStorage.getItem(LS_UI_ADVANCED) === '1';
       adv.classList.toggle('show', saved);
+      updateMobileHeaderState(true);
     }
     function setAdvanced(open) {
       localStorage.setItem(LS_UI_ADVANCED, open ? '1' : '0');
@@ -1045,6 +1068,21 @@
       const isOpen = adv && adv.classList.contains('show');
       setAdvanced(!isOpen);
     });
+
+    function updateMobileHeaderState(isMobile) {
+      const title = document.querySelector('h1');
+      const btn = document.getElementById('btnToggleAdvanced');
+      if (!title || !btn) return;
+      const original = title.getAttribute('data-full-title') || title.textContent;
+      if (!title.getAttribute('data-full-title')) title.setAttribute('data-full-title', original);
+      if (isMobile) {
+        title.textContent = 'Лента';
+        btn.textContent = '⚙︎';
+      } else {
+        title.textContent = title.getAttribute('data-full-title') || 'Моя лента';
+        btn.textContent = '⚙︎ Настройки';
+      }
+    }
 
     // Boot
     window.addEventListener('resize', () => { resizeCanvas(); updateAppHeight(); updateAdvancedVisibility(); });

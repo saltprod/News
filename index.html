@@ -22,6 +22,7 @@
       --shadow: 0 16px 40px rgba(2, 8, 20, 0.45);
       --header-h: 168px;
       --bottom-h: 64px;
+      --safe-top: env(safe-area-inset-top);
       --safe-bottom: env(safe-area-inset-bottom);
       --app-h: 100vh;
     }
@@ -68,7 +69,6 @@
       z-index: 2;
       max-width: 1024px;
       margin: 0 auto;
-      padding-top: calc(var(--header-h) + 14px);
       padding-bottom: 0
     }
 
@@ -80,15 +80,15 @@
       right: 0;
       z-index: 60;
       background: linear-gradient(180deg, rgba(8, 13, 25, 0.98), rgba(8, 13, 25, 0.86));
-      padding: 14px 18px 12px;
+      padding: calc(14px + var(--safe-top)) 18px 12px;
       border-bottom: 1px solid var(--border);
       backdrop-filter: blur(10px)
     }
 
     main {
-      height: calc(var(--app-h) - var(--header-h) - var(--bottom-h) - var(--safe-bottom));
+      height: calc(var(--app-h) - var(--header-h) - var(--bottom-h));
       overflow: auto;
-      padding: 12px 18px calc(16px + var(--safe-bottom));
+      padding: calc(var(--header-h) + 12px) 18px calc(16px + var(--safe-bottom));
       -webkit-overflow-scrolling: touch;
       overscroll-behavior: contain
     }
@@ -110,6 +110,11 @@
       display: flex;
       align-items: center;
       gap: 12px
+    }
+    .title-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center
     }
 
     .logo {
@@ -516,11 +521,11 @@
 
     @media (max-width:520px) {
       :root {
-        --header-h: 116px
+        --header-h: 100px
       }
 
       header {
-        padding: 8px 10px 6px
+        padding: calc(6px + var(--safe-top)) 8px 6px
       }
 
       .title-row {
@@ -545,7 +550,8 @@
       .stat-pill,
       .status-pill {
         font-size: 10px;
-        padding: 4px 6px
+        padding: 4px 6px;
+        white-space: nowrap
       }
 
       .source-select {
@@ -560,6 +566,15 @@
       }
       .bg-toggle-wrap {
         min-height: 44px
+      }
+      .toggle {
+        width: 38px;
+        height: 22px;
+        padding: 3px
+      }
+      .toggle .dot {
+        width: 14px;
+        height: 14px
       }
 
       .toolbar,
@@ -594,10 +609,12 @@
             <div class="user" id="userInfo">Загрузка:</div>
           </div>
         </div>
-        <div style="display:flex;gap:8px;align-items:center"></div>
+        <div class="title-actions">
+          <select id="sourceSelect" class="source-select" aria-label="Выбор источника"></select>
+          <button id="btnToggleAdvanced" class="btn ghost">...</button>
+        </div>
       </div>
       <div class="toolbar">
-        <select id="sourceSelect" class="source-select" aria-label="Выбор источника"></select>
         <button id="btnFavFilter" class="chip" aria-pressed="false">Только избранные</button>
         <div class="bg-toggle-wrap">
           <span id="bgLabel" class="badge">Фон: Выкл</span>
@@ -613,7 +630,6 @@
     <main>
       <div class="panel">
         <div class="feed-row" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          <button id="btnToggleAdvanced" class="btn ghost">⚙︎ Настройки</button>
           <div id="feedAdvanced" class="feed-advanced"
             style="display:flex;gap:8px;align-items:center;flex:1;min-width:200px">
             <input id="inputFeed" class="input"
@@ -1032,6 +1048,12 @@
     function createStars() { stars = []; const count = Math.round((innerWidth * innerHeight) / 70000); for (let i = 0; i < count; i++) { stars.push({ x: Math.random() * innerWidth, y: Math.random() * innerHeight, r: Math.random() * 1.2 + 0.2, a: Math.random() * 0.8 + 0.2, v: Math.random() * 0.2 - 0.05 }); } }
     function drawBg() { ctx.clearRect(0, 0, canvas.width, canvas.height); for (const s of stars) { s.x += s.v; if (s.x < 0) s.x = canvas.width; if (s.x > canvas.width) s.x = 0; ctx.globalAlpha = s.a; ctx.fillStyle = '#7fb2ff'; ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2); ctx.fill(); } ctx.globalAlpha = 1; requestAnimationFrame(drawBg); }
     function updateAppHeight() { document.documentElement.style.setProperty('--app-h', window.innerHeight + 'px'); }
+    function updateLayoutHeights() {
+      const header = document.querySelector('header');
+      const bottom = document.querySelector('.bottom-bar');
+      if (header) document.documentElement.style.setProperty('--header-h', header.offsetHeight + 'px');
+      if (bottom) document.documentElement.style.setProperty('--bottom-h', bottom.offsetHeight + 'px');
+    }
 
     // Theme & UI init
     function applyTheme() { const saved = localStorage.getItem(LS_THEME); if (saved === 'dark') { document.documentElement.style.setProperty('--bg', '#071022'); } else if (saved === 'light') { document.documentElement.style.setProperty('--bg', '#f6f7fb'); document.documentElement.style.setProperty('--text', '#071022'); } }
@@ -1064,10 +1086,11 @@
       const adv = document.getElementById('feedAdvanced');
       if (!adv) return;
       const isMobile = window.matchMedia('(max-width: 520px)').matches;
-      if (!isMobile) { adv.classList.add('show'); updateMobileHeaderState(false); return; }
+      if (!isMobile) { adv.classList.add('show'); updateMobileHeaderState(false); updateLayoutHeights(); return; }
       const saved = localStorage.getItem(LS_UI_ADVANCED) === '1';
       adv.classList.toggle('show', saved);
       updateMobileHeaderState(true);
+      updateLayoutHeights();
     }
     function setAdvanced(open) {
       localStorage.setItem(LS_UI_ADVANCED, open ? '1' : '0');
@@ -1088,17 +1111,18 @@
       if (!title.getAttribute('data-full-title')) title.setAttribute('data-full-title', original);
       if (isMobile) {
         title.textContent = 'Лента';
-        btn.textContent = '⚙︎';
+        btn.textContent = '...';
       } else {
         title.textContent = title.getAttribute('data-full-title') || 'Моя лента';
-        btn.textContent = '⚙︎ Настройки';
+        btn.textContent = '...';
       }
     }
 
     // Boot
-    window.addEventListener('resize', () => { resizeCanvas(); updateAppHeight(); updateAdvancedVisibility(); });
+    window.addEventListener('resize', () => { resizeCanvas(); updateAppHeight(); updateLayoutHeights(); updateAdvancedVisibility(); });
     window.addEventListener('load', () => {
       updateAppHeight();
+      updateLayoutHeights();
       applyTheme();
       // populate source selector and restore selection
       try { loadSources(); } catch (e) { console.warn('loadSources failed', e); }
@@ -1119,3 +1143,5 @@
 </body>
 
 </html>
+
+

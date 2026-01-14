@@ -57,7 +57,10 @@
       bottom: 0;
       z-index: 0;
       pointer-events: none;
-      opacity: 0.4
+      opacity: 0.15
+    }
+    body.bg-on canvas#bgCanvas {
+      opacity: 0.55
     }
 
     .app {
@@ -448,6 +451,11 @@
       font-size: 12px;
       color: var(--muted)
     }
+    .bg-toggle-wrap {
+      display: flex;
+      gap: 8px;
+      align-items: center
+    }
 
     .skeleton {
       height: 14px;
@@ -550,6 +558,9 @@
       .input {
         min-height: 44px
       }
+      .bg-toggle-wrap {
+        min-height: 44px
+      }
 
       .toolbar,
       .search-wrap {
@@ -586,14 +597,10 @@
         <div style="display:flex;gap:8px;align-items:center"></div>
       </div>
       <div class="toolbar">
-        <div class="search-wrap">
-          <input id="inputSearch" class="input" placeholder="Поиск по заголовкам и описанию" />
-          <button id="btnClearSearch" class="btn small ghost" title="Очистить поиск">Очистить</button>
-        </div>
         <select id="sourceSelect" class="source-select" aria-label="Выбор источника"></select>
         <button id="btnFavFilter" class="chip" aria-pressed="false">Только избранные</button>
-        <div style="display:flex;gap:8px;align-items:center">
-          <span class="badge">Фон</span>
+        <div class="bg-toggle-wrap">
+          <span id="bgLabel" class="badge">Фон: Выкл</span>
           <button id="bgToggle" class="toggle" aria-label="Анимация фона"><span class="dot"></span></button>
         </div>
       </div>
@@ -841,7 +848,7 @@
     // Render
     function normalizeText(s) { return (s || '').toLowerCase(); }
     function getFilteredNews() {
-      const q = normalizeText(document.getElementById('inputSearch')?.value || '');
+      const q = '';
       let list = news;
       if (favFilterOn) list = list.filter(it => favs.has(it.id));
       if (q) list = list.filter(it => {
@@ -1033,10 +1040,6 @@
     document.getElementById('btnLoad').addEventListener('click', () => { const v = document.getElementById('inputFeed').value.trim(); if (v) { fetchUrl = v; loadNews(fetchUrl); } else loadNews(); });
     const themeBtn = document.getElementById('btnToggleTheme'); if (themeBtn) themeBtn.addEventListener('click', () => { const cur = localStorage.getItem(LS_THEME); const next = cur === 'dark' ? 'light' : 'dark'; localStorage.setItem(LS_THEME, next); applyTheme(); });
     const bgToggleBtn = document.getElementById('bgToggle'); if (bgToggleBtn) bgToggleBtn.addEventListener('click', () => { const cur = localStorage.getItem(LS_BG) === '1'; localStorage.setItem(LS_BG, cur ? '0' : '1'); updateBgToggle(); });
-    const searchInput = document.getElementById('inputSearch');
-    if (searchInput) searchInput.addEventListener('input', () => { displayedCount = PAGE_SIZE; renderNews(); });
-    const clearSearch = document.getElementById('btnClearSearch');
-    if (clearSearch) clearSearch.addEventListener('click', () => { if (searchInput) searchInput.value = ''; displayedCount = PAGE_SIZE; renderNews(); });
     const favFilterBtn = document.getElementById('btnFavFilter');
     if (favFilterBtn) favFilterBtn.addEventListener('click', () => {
       favFilterOn = !favFilterOn;
@@ -1048,7 +1051,15 @@
     // Load more button
     const loadMoreBtn = document.getElementById('btnLoadMore'); if (loadMoreBtn) { loadMoreBtn.addEventListener('click', () => { const list = getFilteredNews(); if (!list || !list.length) return; displayedCount = displayedCount + PAGE_SIZE; renderNews(); }); }
 
-    function updateBgToggle() { const on = localStorage.getItem(LS_BG) !== '0'; const el = document.getElementById('bgToggle'); if (el) el.classList.toggle('on', on); if (on) { resizeCanvas(); createStars(); drawBg(); } }
+    function updateBgToggle() {
+      const on = localStorage.getItem(LS_BG) !== '0';
+      const el = document.getElementById('bgToggle');
+      const label = document.getElementById('bgLabel');
+      if (el) el.classList.toggle('on', on);
+      if (label) label.textContent = on ? 'Фон: Вкл' : 'Фон: Выкл';
+      document.body.classList.toggle('bg-on', on);
+      if (on) { resizeCanvas(); createStars(); drawBg(); }
+    }
     function updateAdvancedVisibility() {
       const adv = document.getElementById('feedAdvanced');
       if (!adv) return;

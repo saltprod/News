@@ -94,10 +94,20 @@
     }
 
     .header-top {
-      display: flex;
+      display: grid;
+      grid-template-columns: auto 1fr auto;
       align-items: center;
-      justify-content: space-between;
-      gap: 12px
+      gap: 8px
+    }
+
+    .header-title {
+      text-align: center;
+      font-weight: 600;
+      color: #cbd2e3;
+      font-size: 15px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis
     }
 
     .header-info {
@@ -119,6 +129,10 @@
       font-size: 12px;
       border-radius: 10px;
       min-height: 32px
+    }
+    .icon-only {
+      min-width: 32px;
+      padding: 6px 8px
     }
 
     .menu-backdrop {
@@ -671,14 +685,11 @@
   <div class="app" id="app">
     <header>
       <div class="header-top">
-        <button id="btnClose" class="btn ghost icon-btn">Закрыть</button>
-        <button id="btnMenu" class="btn ghost icon-btn" aria-label="Меню">⋯</button>
+        <button id="btnClose" class="btn ghost icon-btn icon-only" aria-label="Назад">←</button>
+        <div id="headerTitle" class="header-title">Новости</div>
+        <button id="btnMenu" class="btn ghost icon-btn icon-only" aria-label="Меню">⋯</button>
       </div>
       <div class="header-info">
-        <div class="title-row">
-          <div class="logo">N</div>
-          <h1>Моя лента</h1>
-        </div>
         <select id="sourceSelect" class="source-select" aria-label="Выбор источника"></select>
         <button id="btnFavFilter" class="chip" aria-pressed="false">Только избранные</button>
         <div class="stats">
@@ -965,8 +976,10 @@
       const src = SOURCES.find(s => s.id === srcId);
       const countEl = document.getElementById('statCount');
       const srcEl = document.getElementById('statSource');
+      const titleEl = document.getElementById('headerTitle');
       if (countEl) countEl.textContent = `${shown} из ${total} новостей`;
       if (srcEl) srcEl.textContent = `Источник: ${src ? src.name : 'ручной'}`;
+      if (titleEl) titleEl.textContent = src ? src.name : 'Новости';
     }
     function renderNews() {
       const root = $('#news'); root.innerHTML = '';
@@ -1323,15 +1336,8 @@
     });
 
     function updateMobileHeaderState(isMobile) {
-      const title = document.querySelector('h1');
+      const title = document.getElementById('headerTitle');
       if (!title) return;
-      const original = title.getAttribute('data-full-title') || title.textContent;
-      if (!title.getAttribute('data-full-title')) title.setAttribute('data-full-title', original);
-      if (isMobile) {
-        title.textContent = 'Лента';
-      } else {
-        title.textContent = title.getAttribute('data-full-title') || 'Моя лента';
-      }
     }
 
     // Boot

@@ -4,6 +4,10 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>Telegram MiniApp — Моя лента</title>
+  <!-- The official bridge — without it, window.Telegram.WebApp is never real: ready()/expand(),
+       safeAreaInset, theme params and the user's name all silently no-op. Must load before our
+       own script runs. -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <style>
     :root{
       --bg:#071022; --surface:#081426; --text:#e6eef8; --muted:#9fb3d6; --accent:#2a8cff;

@@ -87,7 +87,9 @@
   </header>
 
     <!-- ADDED: Side control panel — moved controls here so they do not overlap news -->
-    <aside id="controlPanel" class="side-panel" aria-hidden="false">
+    <!-- Collapsed by default so the news list is the first thing visible — the ☰ button
+         (setPanelHidden) reveals it on demand rather than always taking up the top of the screen. -->
+    <aside id="controlPanel" class="side-panel hidden" aria-hidden="true">
       <div style="background:rgba(255,255,255,0.01);padding:10px;border-radius:8px">
         <div style="margin-bottom:8px"><label style="font-size:13px;color:var(--muted)">Источник</label><br /><select id="sourceSelect" class="source-select" aria-label="Выбор источника" style="width:100%"></select></div>
         <div style="margin-bottom:8px"><input id="inputFeed" class="field" placeholder="rss:https://example.com/feed.xml или https://api.example.com/news.json" /></div>
